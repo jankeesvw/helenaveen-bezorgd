@@ -174,6 +174,65 @@ class Grid:
         return self.cells.get((int(math.floor(x / self.cell)), int(math.floor(z / self.cell))), [])
 
 
+def aerial_tiles(proj):
+    """Knipt de luchtfoto in tegels (luchtfoto/hr en, op halve resolutie, luchtfoto/lr) en geeft de
+    affiene afbeelding van wereldmeters naar fotopixels terug, zodat de game elke tegel op zijn plek legt."""
+    from PIL import Image, ImageEnhance
+    import bag3d
+    from rd import rd_to_wgs
+    X0, Y0, X1, Y1, RES = map(float, (ROOT / 'data' / 'luchtfoto.txt').read_text().split())
+    # kleinste kwadraten over een raster van punten: wereld (x, z) -> pixel (u, v)
+    rows = []
+    for i in range(9):
+        for j in range(9):
+            xr, yr = X0 + (X1 - X0) * i / 8, Y0 + (Y1 - Y0) * j / 8
+            x, z = proj(*rd_to_wgs(xr, yr)); x, z = x + bag3d.SHIFT[0], z + bag3d.SHIFT[1]
+            rows.append((x, z, (xr - X0) / RES, (Y1 - yr) / RES))
+    def fit(k):
+        # normaalvergelijkingen voor [a b c]
+        A = [[0.0] * 3 for _ in range(3)]; B = [0.0] * 3
+        for r in rows:
+            f = (r[0], r[1], 1.0)
+            for m in range(3):
+                B[m] += f[m] * r[k]
+                for n in range(3):
+                    A[m][n] += f[m] * f[n]
+        for c in range(3):  # Gauss
+            piv = max(range(c, 3), key=lambda q: abs(A[q][c])); A[c], A[piv] = A[piv], A[c]; B[c], B[piv] = B[piv], B[c]
+            for q in range(c + 1, 3):
+                t = A[q][c] / A[c][c]
+                for n in range(c, 3):
+                    A[q][n] -= t * A[c][n]
+                B[q] -= t * B[c]
+        x = [0.0] * 3
+        for c in (2, 1, 0):
+            x[c] = (B[c] - sum(A[c][n] * x[n] for n in range(c + 1, 3))) / A[c][c]
+        return x
+    aff = fit(2) + fit(3)
+    err = max(abs(aff[0] * r[0] + aff[1] * r[1] + aff[2] - r[2]) + abs(aff[3] * r[0] + aff[4] * r[1] + aff[5] - r[3]) for r in rows)
+    photo = Image.open(ROOT / 'data' / 'luchtfoto.jpg').convert('RGB')
+    W, H = photo.size
+    TILE, PAD = 1024, 2
+    src = ROOT / 'data' / 'luchtfoto.jpg'
+    for d in ('hr', 'lr'):
+        (ROOT / 'luchtfoto' / d).mkdir(parents=True, exist_ok=True)
+    stamp = ROOT / 'luchtfoto' / '.gemaakt'
+    if not stamp.exists() or stamp.stat().st_mtime < src.stat().st_mtime:
+        photo = ImageEnhance.Color(photo).enhance(1.25)  # voorjaarsfoto iets voller van kleur
+        # de lage voorjaarszon geeft lange schaduwen in de foto: donkere tinten wat ophalen
+        lut = [round(255 * (i / 255) ** 0.8) for i in range(256)]
+        photo = photo.point(lut * 3)
+        for r in range(math.ceil(H / TILE)):
+            for c in range(math.ceil(W / TILE)):
+                box = (max(0, c * TILE - PAD), max(0, r * TILE - PAD), min(W, (c + 1) * TILE + PAD), min(H, (r + 1) * TILE + PAD))
+                t = photo.crop(box)
+                t.save(ROOT / 'luchtfoto' / 'hr' / f'{c}_{r}.jpg', quality=80)
+                t.resize((max(1, t.width // 2), max(1, t.height // 2)), Image.LANCZOS).save(ROOT / 'luchtfoto' / 'lr' / f'{c}_{r}.jpg', quality=78)
+        stamp.touch()
+    print(f'luchtfoto: {math.ceil(W / TILE)} x {math.ceil(H / TILE)} tegels, afwijking affien {err:.3f} px')
+    return {'aff': [round(v, 7) for v in aff], 'W': W, 'H': H, 'tile': TILE, 'pad': PAD}
+
+
 def main():
     raw = json.loads((ROOT / 'data' / 'osm.json').read_text())
     els = raw['elements']
@@ -400,7 +459,7 @@ def main():
         if inside(x, z, forest_bb):
             kind = 1 if lum <= dark else (2 if random.random() < 0.5 and h < 16 else 0)
         else:
-            kind = 4 if h > 12 and rad / h < 0.17 else 0
+            kind = 0  # langs de wegen en op de erven staan bijna alleen eiken
         trees.append((pos[0], pos[1], kind, h, rad))
     # boomgaarden: lage fruitbomen in rijen, uit OSM
     for pts in orchard_polys:
@@ -489,6 +548,7 @@ def main():
         'dest': {'addr': [dm(dest[0]), dm(dest[1])], 'gate': [dm(gx), dm(gz)], 'post': [dm(post[0]), dm(post[1])],
                  'node': gate_node, 'building': dest_building},
     }
+    world['aerial'] = aerial_tiles(proj)
     js = json.dumps(world, separators=(',', ':'))
     (ROOT / 'data' / 'world.json').write_text(js)
 

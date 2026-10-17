@@ -427,7 +427,7 @@ function worldUV(g, size) {
   g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); return g;
 }
 const groundGeo = new THREE.PlaneGeometry(BX1 - BX0 + 3000, BZ1 - BZ0 + 3000); groundGeo.rotateX(-Math.PI / 2); groundGeo.translate((BX0 + BX1) / 2, 0, (BZ0 + BZ1) / 2);
-const ground = new THREE.Mesh(worldUV(groundGeo, 9), new THREE.MeshStandardMaterial({ color: '#7fa35a', map: grassTex, roughness: 1, ...SKIP_WATER }));
+const ground = new THREE.Mesh(worldUV(groundGeo, 9), new THREE.MeshStandardMaterial({ color: '#9aa27a', map: grassTex, roughness: 1, ...SKIP_WATER }));
 ground.receiveShadow = true;
 scene.add(ground);
 
@@ -448,14 +448,40 @@ function flatShapeGeo(shape, y, color) {
   g.deleteAttribute('uv'); g.deleteAttribute('normal'); g.computeVertexNormals();
   return g;
 }
+let aerialLoaded = 0;
+// De luchtfoto van PDOK als ondergrond, in tegels (telefoons krijgen de halve resolutie). Elke tegel ligt via
+// de affiene afbeelding uit build.py precies op zijn plek; een fijne korrel erover verbergt de halve meter per pixel.
 {
-  const geos = [];
-  W.lands.forEach((l) => {
-    const pts = pairs(l.p); const c = new THREE.Color(LAND_COL[l.k]).offsetHSL(0, 0, (Math.random() - 0.5) * 0.04);
-    geos.push(flatShapeGeo(shapeFrom(pts), 0.008 + LAND_ORDER.indexOf(l.k) * 0.003, c));
-  });
-  const m = new THREE.Mesh(worldUV(mergeGeometries(geos), 9), new THREE.MeshStandardMaterial({ vertexColors: true, map: grassTex, roughness: 1, ...SKIP_WATER }));
-  m.receiveShadow = true; scene.add(m);
+  const A = W.aerial, [a, b, c, d, e, f] = A.aff, det = a * e - b * d;
+  const toWorld = (u, v) => [(e * (u - c) - b * (v - f)) / det, (-d * (u - c) + a * (v - f)) / det];
+  const detailTex = noiseTexture(256, '#808080', 60, [['#ffffff', 600, 1], ['#000000', 600, 1]]);
+  const loader = new THREE.TextureLoader();
+  const blank = new THREE.DataTexture(new Uint8Array([118, 122, 98, 255]), 1, 1); blank.colorSpace = THREE.SRGBColorSpace; blank.needsUpdate = true;
+  const dir = MOBILE ? 'lr' : 'hr', T = A.tile, P = A.pad;
+  for (let r = 0; r * T < A.H; r++) for (let col = 0; col * T < A.W; col++) {
+    const u0 = col * T, v0 = r * T, u1 = Math.min(A.W, u0 + T), v1 = Math.min(A.H, v0 + T);
+    const iu0 = Math.max(0, u0 - P), iv0 = Math.max(0, v0 - P), iw = Math.min(A.W, u1 + P) - iu0, ih = Math.min(A.H, v1 + P) - iv0;
+    const corners = [[u0, v1], [u1, v1], [u1, v0], [u0, v0]];
+    const pos = [], uv = [];
+    for (const [u, v] of corners) { const [x, z] = toWorld(u, v); pos.push(x, 0.006, z); uv.push((u - iu0) / iw, 1 - (v - iv0) / ih); }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex([0, 2, 1, 0, 3, 2]); g.computeVertexNormals();
+    if (g.attributes.normal.getY(0) < 0) { g.setIndex([0, 1, 2, 0, 2, 3]); g.computeVertexNormals(); }
+    // iets lichter dan 1: de zon staat laag, en de foto zelf is al belicht
+    const mat = new THREE.MeshStandardMaterial({ map: blank, color: new THREE.Color(1.3, 1.3, 1.3), roughness: 1, envMapIntensity: 0.25, ...SKIP_WATER });
+    mat.userData.aerial = true;
+    mat.onBeforeCompile = (sh) => {
+      sh.uniforms.detailMap = { value: detailTex };
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vDetail;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvDetail = (modelMatrix * vec4(transformed, 1.0)).xz / 2.2;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec2 vDetail;\nuniform sampler2D detailMap;')
+        .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.rgb *= mix(1.0, texture2D(detailMap, vDetail).r * 2.0, 0.45) * mix(1.0, texture2D(detailMap, vDetail * 0.13).r * 2.0, 0.25);');
+    };
+    mat.customProgramCacheKey = () => 'luchtfoto';
+    const m = new THREE.Mesh(g, mat); m.receiveShadow = true; scene.add(m);
+    loader.load(`luchtfoto/${dir}/${col}_${r}.jpg`, (tex) => { tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); mat.map = tex; aerialLoaded++; });
+  }
 }
 
 // ------------------------------------------------------------------ water
@@ -924,6 +950,13 @@ const BUILD_SHAPES = [];
   const trunkGeo = new THREE.CylinderGeometry(0.16, 0.24, 1, 6); trunkGeo.translate(0, 0.5, 0);
   const leafGeo = new THREE.IcosahedronGeometry(1, 1);
   const pineGeo = new THREE.ConeGeometry(1, 1, 7); pineGeo.translate(0, 0.5, 0);
+  // eik: brede, onregelmatige kruin uit een paar klonten blad, en een stam die zich in zware takken splitst
+  const oakCrownGeo = mergeGeometries([[0, 0.15, 0, 0.62], [0.47, -0.05, 0.12, 0.5], [-0.44, 0, -0.15, 0.52], [0.1, 0.08, 0.5, 0.48], [-0.12, -0.04, -0.52, 0.47], [0.04, 0.45, 0.05, 0.45], [-0.35, 0.3, 0.32, 0.38]]
+    .map(([x, y, z, r]) => { const g = new THREE.IcosahedronGeometry(r, 1); g.translate(x, y, z); return g; }));
+  const oakTrunkGeo = mergeGeometries([
+    (() => { const g = new THREE.CylinderGeometry(0.2, 0.3, 0.72, 7); g.translate(0, 0.36, 0); return g; })(),
+    ...[[0.6, 0.2], [-0.55, -0.5], [0.15, 2.4]].map(([tilt, yaw]) => { const g = new THREE.CylinderGeometry(0.08, 0.14, 0.5, 6); g.translate(0, 0.25, 0); g.rotateZ(tilt); g.rotateY(yaw); g.translate(0, 0.62, 0); return g; }),
+  ].map((g) => g.toNonIndexed()));
   const trunkMat = new THREE.MeshStandardMaterial({ color: '#5a4636', roughness: 1 });
   const birchMat = new THREE.MeshStandardMaterial({ color: '#d9d4c8', roughness: 1 });
   const leafMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.9, flatShading: true });
@@ -931,12 +964,15 @@ const BUILD_SHAPES = [];
   TREES.forEach((t) => { const k = Math.floor(t.x / TILE) + ',' + Math.floor(t.z / TILE); if (!tiles.has(k)) tiles.set(k, []); tiles.get(k).push(t); });
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3(), col = new THREE.Color();
   const LEAF = ['#4f7a34', '#5d8a3a', '#46702f', '#6a913f'], PINE = ['#2f5232', '#36593a', '#2b4a2e'], FRUIT = ['#5f8f3c', '#6b9a44'];
+  const OAK = ['#4b6b2c', '#56772f', '#45652a', '#5d7d33'];
   for (const list of tiles.values()) {
     const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, list.length);
     const birchTrunks = new THREE.InstancedMesh(trunkGeo, birchMat, list.length);
     const crowns = new THREE.InstancedMesh(leafGeo, leafMat, list.length);
     const pines = new THREE.InstancedMesh(pineGeo, leafMat, list.length);
-    let nt = 0, nb = 0, nc = 0, np = 0;
+    const oakTrunks = new THREE.InstancedMesh(oakTrunkGeo, trunkMat, list.length);
+    const oaks = new THREE.InstancedMesh(oakCrownGeo, leafMat, list.length);
+    let nt = 0, nb = 0, nc = 0, np = 0, not = 0, no = 0;
     for (const t of list) {
       const r = Math.abs((t.x * 12.9898 + t.z * 78.233) % 1), rot = r * 6.28; q.setFromAxisAngle(v.set(0, 1, 0), rot);
       const h = Math.max(2.5, t.h), cr = Math.max(0.8, t.r), tw = 0.7 + h * 0.035;
@@ -955,13 +991,13 @@ const BUILD_SHAPES = [];
         const rv = (h - 2.5) / 2;
         m4.compose(v.set(t.x, 0, t.z), q, sc.set(tw, 4, tw)); trunks.setMatrixAt(nt++, m4);
         m4.compose(v.set(t.x, 2.5 + rv, t.z), q, sc.set(cr * 1.1, rv, cr * 1.1)); crowns.setMatrixAt(nc, m4); crowns.setColorAt(nc++, col.set('#4a7434').offsetHSL(0, 0, (r - 0.5) * 0.05));
-      } else { // loofboom: kruin zo groot als het AHN zegt, met de onderkant minstens 1,6 m boven de grond
-        const rv = Math.min(cr * 1.05, (h - 1.6) / 2);
-        m4.compose(v.set(t.x, 0, t.z), q, sc.set(tw, h - rv, tw)); trunks.setMatrixAt(nt++, m4);
-        m4.compose(v.set(t.x, h - rv, t.z), q, sc.set(cr, rv, cr)); crowns.setMatrixAt(nc, m4); crowns.setColorAt(nc++, col.set(LEAF[nc % 4]).offsetHSL(0, 0, (r - 0.5) * 0.06));
+      } else { // eik: kruin zo breed als het AHN zegt, wat platter dan hoog, onderkant minstens 1,8 m boven de grond
+        const rv = Math.min(cr * 0.8, (h - 1.8) / 1.9), cy = h - rv * 0.9;
+        m4.compose(v.set(t.x, 0, t.z), q, sc.set(tw * 1.25, cy, tw * 1.25)); oakTrunks.setMatrixAt(not++, m4);
+        m4.compose(v.set(t.x, cy, t.z), q, sc.set(cr, rv, cr)); oaks.setMatrixAt(no, m4); oaks.setColorAt(no++, col.set(OAK[no % 4]).offsetHSL(0, (r - 0.5) * 0.06, (r - 0.5) * 0.05));
       }
     }
-    for (const [im, n] of [[trunks, nt], [birchTrunks, nb], [crowns, nc], [pines, np]]) {
+    for (const [im, n] of [[trunks, nt], [birchTrunks, nb], [crowns, nc], [pines, np], [oakTrunks, not], [oaks, no]]) {
       if (!n) continue; im.count = n; im.castShadow = true; im.receiveShadow = true; im.computeBoundingSphere(); im.frustumCulled = true; scene.add(im);
     }
   }
@@ -1670,7 +1706,7 @@ const boot = (data) => {
   requestAnimationFrame(frame);
 };
 window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
-window.__ape = { state, keys, routeFrom, DEST, camera, THREE, bumpHeight, BUMPS,
+window.__ape = { state, keys, routeFrom, DEST, camera, THREE, scene, bumpHeight, BUMPS, get aerialLoaded() { return aerialLoaded; }, get frames() { return renderer.info.render.frame; },
   sim(seconds, dt = 1 / 60) { let maxSus = 0, thumps = 0, events = []; const t0 = state.lastThump;
     for (let t = 0; t < seconds; t += dt) { if (state.event) { updateEvent(dt); if (!events.includes(state.event)) events.push(state.event); } else physics(dt); updateNav(dt); maxSus = Math.max(maxSus, Math.abs(state.susY)); if (state.lastThump !== t0) thumps++; }
     return { x: +state.x.toFixed(1), z: +state.z.toFixed(1), v: +(state.v * 3.6).toFixed(1), maxSus: +maxSus.toFixed(3), events, street: streetShown }; } };
