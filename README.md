@@ -1,8 +1,17 @@
 # Met de Ape naar Koolweg 42
 
-Een 3D-spelletje in de browser: je rijdt met een groene Piaggio Ape van Soemeersingel 25 in Helenaveen naar Koolweg 42, langs de Helenavaart, over de houten fietsbrug en de betonnen brug bij Kamp Mariaveen, en over de wortelbulten van de laanbomen.
+Een 3D-spelletje in de browser: je rijdt van Soemeersingel 25 in Helenaveen naar Koolweg 42, langs de Helenavaart, over de houten fietsbrug en de betonnen brug bij Kamp Mariaveen, en over de wortelbulten van de laanbomen.
 
 Spelen: https://jankeesvw.github.io/ape-helenaveen/
+
+## Wagens
+
+Op de startkaart kies je je wagen; de snelste tijd wordt per wagen bijgehouden.
+
+- **Piaggio Ape**, groen, met een laadbak vol kool. Haalt 45 km/u, opgevoerd 70, en kantelt als je hem op snelheid op vol stuur neemt.
+- **Fiat 500** (de oude), rood, met het linnen schuifdak. 85 km/u, plankgas 95.
+- **Volkswagen Kever** (de oude), rood, met losse spatborden en treeplanken. 100 km/u, plankgas 120.
+- **Volkswagen T2-busje**, Samtgrün met een wit dak. 95 km/u, plankgas 110, en helt flink over in de bocht.
 
 ## Besturing
 
