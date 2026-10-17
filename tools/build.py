@@ -344,88 +344,85 @@ def main():
             orchard_polys.append(pts)
 
     # ---------- bomen ----------
-    trees = []  # (x, z, soort, schaal)  soort 0 = loof, 1 = den, 2 = berk, 3 = fruit
-    tree_grid = Grid(10)
-    def try_tree(x, z, kind, scale, road_margin=1.6, spacing=2.5):
-        if not (BOUNDS[0] < x < BOUNDS[2] and BOUNDS[1] < z < BOUNDS[3]):
-            return False
-        if near_road(x, z, road_margin) or in_water(x, z, 0.8) or in_building(x, z, 1.5):
-            return False
-        for (tx, tz) in tree_grid.near(x, z):
-            if math.hypot(tx - x, tz - z) < spacing:
-                return False
-        trees.append((x, z, kind, scale))
-        tree_grid.add((x, z, x, z), (x, z))
-        return True
+    # Echte bomen uit het AHN (tools/ahn_trees.py): positie, hoogte en kruinstraal per boom.
+    # Soort: dennen waar de kruin in het bos donker is op de luchtfoto, populieren als ze hoog en smal zijn.
+    trees = []  # (x, z, soort, hoogte, kruinstraal)  soort 0 = loof, 1 = den, 2 = berk, 3 = fruit, 4 = populier
+    def nearest_road(x, z):
+        best = None
+        for gx in (-1, 0, 1):
+            for gz in (-1, 0, 1):
+                for ri, i in road_grid.near(x + gx * 30, z + gz * 30):
+                    r = roads[ri]; a, b = nodes[r['n'][i]], nodes[r['n'][i + 1]]
+                    d, cx, cz, _ = seg_dist(x, z, a[0], a[1], b[0], b[1])
+                    if best is None or d - r['w'] / 2 < best[0] - best[3] / 2:
+                        best = (d, cx, cz, r['w'], r['d'])
+        return best
 
-    for e in els:
-        t = e.get('tags', {})
-        if e['type'] == 'node' and t.get('natural') == 'tree':
-            x, z = proj(e['lat'], e['lon'])
-            try_tree(x, z, 0, 1.0 + random.random() * 0.3)
-    for e in els:
-        t = e.get('tags', {})
-        if e['type'] == 'way' and t.get('natural') == 'tree_row' and 'geometry' in e:
-            pts = [proj(p['lat'], p['lon']) for p in e['geometry']]
-            for i in range(len(pts) - 1):
-                (ax, az), (bx, bz) = pts[i], pts[i + 1]
-                L = math.hypot(bx - ax, bz - az)
-                for s in range(int(L // 7) + 1):
-                    f = s * 7 / max(L, 0.01)
-                    try_tree(ax + (bx - ax) * f, az + (bz - az) * f, 0, 0.9 + random.random() * 0.3, 1.2)
-
-    # laanbomen langs de singels en hoofdwegen
-    lane_roads = {'Soemeersingel', 'Koolweg', 'Helenaveenseweg', 'Sevenumseweg', 'Kamp Mariaveen', 'Oude Peelstraat'}
-    for r in roads:
-        if r['s'] < 0 or names[r['s']] not in lane_roads:
-            continue
-        pts = road_pts(r)
-        off = r['w'] / 2 + 2.6
-        for i in range(len(pts) - 1):
-            (ax, az), (bx, bz) = pts[i], pts[i + 1]
-            L = math.hypot(bx - ax, bz - az)
-            if L < 1:
+    def place(x, z):
+        """Stam van de weg en uit het water schuiven; None als hij nergens past."""
+        for _ in range(16):
+            nr = nearest_road(x, z)
+            if nr and nr[0] < nr[3] / 2 + 0.6:          # op de weg: naar de berm
+                d, cx, cz, w, _ = nr
+                ux, uz = (x - cx, z - cz) if d > 0.05 else (1.0, 0.0)
+                l = math.hypot(ux, uz); x, z = cx + ux / l * (w / 2 + 0.9), cz + uz / l * (w / 2 + 0.9)
                 continue
-            nx, nz = -(bz - az) / L, (bx - ax) / L
-            s = random.random() * 6
-            while s < L:
-                f = s / L
-                px, pz = ax + (bx - ax) * f, az + (bz - az) * f
-                for side in (-1, 1):
-                    if random.random() < 0.88:
-                        try_tree(px + nx * off * side, pz + nz * off * side, 0, 0.95 + random.random() * 0.35, 1.8, 6)
-                s += 11 + random.random() * 4
+            if in_water(x, z, 0.4):                    # boven het kanaal: richting de weg, de oever op
+                if not nr:
+                    return None
+                ux, uz = nr[1] - x, nr[2] - z; l = math.hypot(ux, uz) or 1
+                x, z = x + ux / l * 0.5, z + uz / l * 0.5
+                continue
+            return None if in_building(x, z) else (x, z)
+        return None
 
-    # bos: dennen en berken in de Peel
-    for pts in forest_polys:
-        bb = bbox(pts)
-        bb = (max(bb[0], BOUNDS[0]), max(bb[1], BOUNDS[1]), min(bb[2], BOUNDS[2]), min(bb[3], BOUNDS[3]))
-        step = 8.5
-        x = bb[0]
-        while x < bb[2]:
-            z = bb[1]
-            while z < bb[3]:
-                px, pz = x + random.uniform(-3, 3), z + random.uniform(-3, 3)
-                if pip(px, pz, pts):
-                    r = random.random()
-                    kind = 1 if r < 0.45 else (2 if r < 0.75 else 0)
-                    try_tree(px, pz, kind, 0.75 + random.random() * 0.5, 2.2, 3.5)
-                z += step
-            x += step
+    ahn_file = ROOT / 'data' / 'trees_ahn.json'
+    ahn = json.loads(ahn_file.read_text()) if ahn_file.exists() else []
+    import bag3d
+    from rd import rd_to_wgs
+    forest_lums = []
+    for xr, yr, h, rad, lum in ahn:
+        x, z = proj(*rd_to_wgs(xr, yr)); x, z = x + bag3d.SHIFT[0], z + bag3d.SHIFT[1]
+        if any(pip(x, z, p) for p in forest_polys if bbox(p)[0] <= x <= bbox(p)[2]):
+            forest_lums.append(lum)
+    forest_lums.sort()
+    dark = forest_lums[int(len(forest_lums) * 0.4)] if forest_lums else 0
+    forest_bb = [(bbox(p), p) for p in forest_polys]
+    orchard_bb = [(bbox(p), p) for p in orchard_polys]
+    inside = lambda x, z, polys: any(bb[0] <= x <= bb[2] and bb[1] <= z <= bb[3] and pip(x, z, p) for bb, p in polys)
+    for xr, yr, h, rad, lum in ahn:
+        x, z = proj(*rd_to_wgs(xr, yr)); x, z = x + bag3d.SHIFT[0], z + bag3d.SHIFT[1]
+        if not (BOUNDS[0] < x < BOUNDS[2] and BOUNDS[1] < z < BOUNDS[3]) or inside(x, z, orchard_bb):
+            continue
+        pos = place(x, z)
+        if not pos:
+            continue
+        if inside(x, z, forest_bb):
+            kind = 1 if lum <= dark else (2 if random.random() < 0.5 and h < 16 else 0)
+        else:
+            kind = 4 if h > 12 and rad / h < 0.17 else 0
+        trees.append((pos[0], pos[1], kind, h, rad))
+    # boomgaarden: lage fruitbomen in rijen, uit OSM
     for pts in orchard_polys:
         bb = bbox(pts)
         x = bb[0] + 2
         while x < bb[2]:
             z = bb[1] + 2
             while z < bb[3]:
-                if pip(x, z, pts):
-                    try_tree(x, z, 3, 0.8 + random.random() * 0.2, 1.5, 2.5)
+                if pip(x, z, pts) and not near_road(x, z, 1.5) and not in_water(x, z, 0.8) and not in_building(x, z, 1.5):
+                    trees.append((x, z, 3, 3.0 + random.random() * 0.6, 1.3 + random.random() * 0.3))
                 z += 5
             x += 4
+    # bomen ver van de weg krijgen een vlag, zodat een telefoon er de helft van kan overslaan
+    tree_grid = Grid(10)
+    for t in trees:
+        tree_grid.add((t[0], t[1], t[0], t[1]), (t[0], t[1]))
 
     tree_flat = []
-    for x, z, k, s in trees:
-        tree_flat += [dm(x), dm(z), k, int(round(s * 100))]
+    for x, z, k, h, rad in trees:
+        nr = nearest_road(x, z)
+        far = 0 if nr and nr[4] and nr[0] < 40 else 8
+        tree_flat += [dm(x), dm(z), k | far, dm(h), dm(rad)]
 
     # ---------- start en bestemming ----------
     name_id = lambda n: name_idx[n]

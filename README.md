@@ -12,7 +12,8 @@ Pijltjes of WASD om te rijden, Shift voor opgevoerd (tot 70 km/u), spatie om te 
 
 Alles staat in één HTML-bestand met [three.js](https://threejs.org). De wereld komt uit open data:
 
-- wegen, water, landgebruik en bomen langs de singels: © [OpenStreetMap-bijdragers](https://www.openstreetmap.org/copyright) (ODbL)
+- wegen, water en landgebruik: © [OpenStreetMap-bijdragers](https://www.openstreetmap.org/copyright) (ODbL)
+- bomen: het [AHN](https://www.ahn.nl) via PDOK. Het verschil tussen oppervlakte- en maaiveldmodel geeft de hoogte van alles boven de grond; zonder de gebouwen blijven de boomkruinen over, en elke kruintop wordt een boom met zijn echte hoogte en kruinstraal. De wortelbulten op de Soemeersingel en de Koolweg liggen bij die echte laanbomen.
 - gebouwen met echte dakvormen en hoogtes: [3DBAG](https://3dbag.nl) van de TU Delft (CC BY 4.0)
 - adressen, bouwjaar en gebruiksdoel: BAG via [PDOK](https://www.pdok.nl)
 - dakkleuren: de actuele luchtfoto van [PDOK](https://www.pdok.nl) (CC BY 4.0)
@@ -24,6 +25,7 @@ tools/fetch_osm.sh
 python3 tools/fetch_3dbag.py
 python3 tools/fetch_bag.py
 python3 tools/fetch_luchtfoto.py   # vraagt Pillow
+python3 tools/ahn_trees.py         # vraagt numpy, scipy en Pillow
 python3 tools/build.py             # schrijft index.html
 ```
 
