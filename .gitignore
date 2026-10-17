@@ -1,0 +1,6 @@
+# ruwe brondata: opnieuw op te halen met tools/fetch_osm.sh en tools/fetch_*.py
+data/
+# afgeleide en tijdelijke bestanden
+artifact.html
+tools/social-shot.png
+__pycache__/
