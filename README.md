@@ -37,7 +37,7 @@ De wagens rijden met echte physics (Rapier): elk heeft zijn eigen massa, zwaarte
 
 ## Verkeer
 
-Om je heen rijdt verkeer: auto's, bestelbussen, trekkers (soms met een aanhanger vol champignonkratten of aarde) en fietsers, en een flink deel komt je over je route tegemoet. Ze houden rechts, remmen voor wat er voor ze rijdt, wijken op smalle weggetjes uit naar de berm, halen een fietser of trekker in als de weg vrij is en gaan opzij voor een politiewagen met zwaailicht. Sta je stil in de weg, dan toeteren ze of bellen ze. Rijd je iemand aan terwijl de politie het ziet, dan komen ze achter je aan.
+Om je heen rijdt verkeer: auto's, bestelbussen, trekkers (soms met een aanhanger vol kratten kool of aarde) en fietsers, en een flink deel komt je over je route tegemoet. Ze houden rechts, remmen voor wat er voor ze rijdt, wijken op smalle weggetjes uit naar de berm, halen een fietser of trekker in als de weg vrij is en gaan opzij voor een politiewagen met zwaailicht. Sta je stil in de weg, dan toeteren ze of bellen ze. Rijd je iemand aan terwijl de politie het ziet, dan komen ze achter je aan.
 
 ## Onderweg
 
