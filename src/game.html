@@ -1,4 +1,4 @@
-<title>Ape naar Koolweg 42</title>
+<title>Met de Ape door Helenaveen</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -47,7 +47,9 @@ body { margin: 0; background: #a9c6dc; color: var(--sign-white); font-family: va
   border-top: 6px solid var(--anwb-red);
 }
 .nav .arrow { width: 44px; height: 44px; transition: transform .15s linear; }
-.nav .to { font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--anwb-red); }
+.nav .to { font-size: 13px; font-weight: 800; line-height: 1.15; text-align: center; color: var(--anwb-red); text-wrap: balance; }
+.nav .pay { font-size: 12px; font-weight: 600; }
+.nav .pay b { font-family: var(--font-num); font-size: 15px; color: var(--ape-green); }
 .nav .dist { font-family: var(--font-num); font-weight: 700; font-size: 20px; font-variant-numeric: tabular-nums; }
 .nav .hint { font-size: 12px; font-weight: 600; text-align: center; line-height: 1.2; min-height: 2.4em; }
 
@@ -55,6 +57,24 @@ body { margin: 0; background: #a9c6dc; color: var(--sign-white); font-family: va
 #speedo { width: clamp(120px, 18vw, 170px); height: auto; aspect-ratio: 1; max-width: 100%; display: block; filter: drop-shadow(0 6px 12px rgba(0,0,0,.35)); }
 .timer { font-family: var(--font-num); font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums; background: rgba(16,20,24,.72); padding: 6px 10px; border-radius: 6px; }
 .timer span { display: block; font-family: var(--font-sign); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; opacity: .7; font-weight: 600; }
+.boxes { display: grid; gap: 6px; }
+.timer.low b { color: #ff6b5e; }
+.hud.roam .boxes, .hud.roam .nav { display: none; }
+/* maximumsnelheid: rond bord met rode rand */
+.limit { width: 54px; height: 54px; box-sizing: border-box; border-radius: 50%; background: #fff; border: 7px solid var(--anwb-red); color: var(--ink); display: grid; place-items: center; font: 900 21px var(--font-sign); padding-top: 3px; box-shadow: 0 4px 12px rgba(0,0,0,.3); flex-shrink: 0; }
+.limit.over { animation: over .5s infinite; }
+@keyframes over { 0%, 49.9% { background: #fff; } 50%, 100% { background: var(--amber); box-shadow: 0 0 0 4px rgba(242,179,61,.6), 0 4px 12px rgba(0,0,0,.3); } }
+
+/* gezocht: sterren zoals in GTA, onder het straatnaambord */
+.wanted { position: absolute; top: calc(84px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); background: rgba(16,20,24,.82); border: 3px solid var(--sign-white); border-radius: 8px; padding: 5px 12px 4px; display: grid; justify-items: start; line-height: 1.1; box-shadow: 0 4px 14px rgba(0,0,0,.3); }
+.wanted b { font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+.wanted .stars { font-size: 24px; color: var(--amber); letter-spacing: .06em; }
+.wanted small { font-size: 12px; font-weight: 600; opacity: .85; }
+.wanted[data-seen="1"] { animation: zwaai .6s infinite; }
+@keyframes zwaai { 0%, 49.9% { border-color: #3d6bff; } 50%, 100% { border-color: #ff3b3b; } }
+.flash { position: absolute; inset: 0; animation: flits .6s infinite; }
+@keyframes flits { 0%, 49.9% { box-shadow: inset 0 0 90px 14px rgba(40,90,255,.55); } 50%, 100% { box-shadow: inset 0 0 90px 14px rgba(220,30,40,.55); } }
+@media (prefers-reduced-motion: reduce) { .flash, .wanted[data-seen="1"], .limit.over { animation: none; } .flash { box-shadow: inset 0 0 60px 8px rgba(40,90,255,.4); } }
 
 .toast {
   position: absolute; left: 50%; top: 32%; transform: translate(-50%, -50%) rotate(-3deg);
@@ -127,6 +147,10 @@ body.is-touch .tilt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
   .nav .dist { font-size: 15px; }
   .nav .hint { display: none; }
   #speedo { width: 92px; }
+  .limit { width: 42px; height: 42px; border-width: 5px; font-size: 16px; }
+  .timer { font-size: 14px; padding: 4px 8px; }
+  .wanted { top: calc(58px + env(safe-area-inset-top, 0px)); padding: 3px 10px 2px; }
+  .wanted .stars { font-size: 18px; }
   .street { font-size: 16px; padding: 3px 10px 1px; }
   .steer { height: 66px; }
   .steer .knob { width: 52px; height: 52px; margin: -26px 0 0 -26px; }
@@ -145,8 +169,12 @@ body.is-touch .tilt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
 @media (max-width: 560px) {
   .nav .hint { display: none; }
   .timer { font-size: 15px; }
+  .dash { gap: 8px; }
+  .limit { width: 46px; height: 46px; border-width: 6px; font-size: 18px; }
   .street { font-size: 18px; max-width: calc(100vw - 190px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
+/* smalle telefoon staand: punten en dienst boven de teller, dan blijven Toet en Cam vrij */
+@media (max-width: 440px) { body.is-touch .boxes { position: absolute; left: 0; bottom: calc(100% + 8px); grid-auto-flow: column; } }
 @media (prefers-reduced-motion: reduce) { .nav .arrow { transition: none; } .btn { transition: none; } }
 .loading { position: fixed; inset: 0; display: grid; place-items: center; color: var(--ink); background: #a9c6dc; font-weight: 800; font-size: 18px; letter-spacing: .1em; text-transform: uppercase; }
 </style>
@@ -154,17 +182,24 @@ body.is-touch .tilt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
 <canvas id="scene"></canvas>
 
 <div class="hud" id="hud" hidden>
+  <div class="flash" id="flash" hidden></div>
   <div class="street" id="street" data-empty="1"><small>Helenaveen</small><span id="streetName"></span></div>
+  <div class="wanted" id="wanted" hidden><b>Politie</b><span class="stars" id="stars">★☆☆</span><small id="wantedTxt"></small></div>
   <div class="mapwrap"><canvas id="minimap" width="420" height="420"></canvas></div>
   <div class="nav">
-    <div class="to">Koolweg 42</div>
+    <div class="to" id="navTo">–</div>
     <svg class="arrow" id="navArrow" viewBox="-24 -24 48 48" aria-hidden="true"><path d="M0 -20 L14 4 L5 2 L5 18 L-5 18 L-5 2 L-14 4 Z" fill="#c8102e"/></svg>
     <div class="dist" id="navDist">–</div>
+    <div class="pay"><b id="navPay">+0</b> punten</div>
     <div class="hint" id="navHint"></div>
   </div>
   <div class="dash">
     <canvas id="speedo" width="340" height="340"></canvas>
-    <div class="timer"><span>Rijtijd</span><b id="timer">0:00,0</b></div>
+    <div class="limit" id="limit" role="img" aria-label="maximumsnelheid"><span id="limitNum">30</span></div>
+    <div class="boxes">
+      <div class="timer"><span>Punten</span><b id="score">0</b></div>
+      <div class="timer" id="shiftBox"><span>Dienst</span><b id="timer">5:00</b></div>
+    </div>
   </div>
   <div class="tilt" id="tilt" hidden>Op twee wielen!</div>
   <div class="toast" id="toast" hidden></div>
@@ -183,18 +218,18 @@ body.is-touch .tilt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
   <div class="card" role="dialog" aria-labelledby="startTitle">
     <div class="cap"><span>Helenaveen</span><span>Gem. Deurne</span></div>
     <div class="body">
-      <h1 id="startTitle">Met de <em>Ape</em> naar Koolweg 42</h1>
+      <h1 id="startTitle">Met de <em>Ape</em> door Helenaveen</h1>
       <div class="pick" id="pick" role="radiogroup" aria-label="Kies je wagen">
         <button type="button" role="radio" data-v="ape" aria-checked="true"><svg viewBox="0 0 64 34" aria-hidden="true"><path d="M6 27V14Q6 6 14 6h8q4 0 4 6v6h32v9z" fill="#4f9a45"/><path d="M8 16v-3q0-5 5-5h5v8z" fill="#cfe2ea"/><circle cx="14" cy="28" r="4.2" fill="#1b1d1f"/><circle cx="48" cy="28" r="4.2" fill="#1b1d1f"/></svg><span>Ape</span><small>45 km/u</small></button>
         <button type="button" role="radio" data-v="fiat" aria-checked="false"><svg viewBox="0 0 64 34" aria-hidden="true"><path d="M7 26q-2-8 5-10l8-7q6-4 16-3 10 1 14 8 8 2 8 12z" fill="#c4161c"/><path d="M21 15l5-5q4-2 10-2h4q5 1 7 7z" fill="#cfe2ea"/><circle cx="17" cy="27" r="4.5" fill="#1b1d1f"/><circle cx="47" cy="27" r="4.5" fill="#1b1d1f"/></svg><span>Fiat 500</span><small>85 km/u</small></button>
         <button type="button" role="radio" data-v="kever" aria-checked="false"><svg viewBox="0 0 64 34" aria-hidden="true"><path d="M4 25q0-7 8-8 4-11 18-12 16 0 22 11 8 2 8 9z" fill="#b3121a"/><path d="M17 16q3-8 13-8.5 10 0 14 8.5z" fill="#cfe2ea"/><circle cx="16" cy="26" r="5" fill="#1b1d1f"/><circle cx="48" cy="26" r="5" fill="#1b1d1f"/></svg><span>Kever</span><small>100 km/u</small></button>
         <button type="button" role="radio" data-v="bus" aria-checked="false"><svg viewBox="0 0 64 34" aria-hidden="true"><path d="M5 27V12q0-8 8-8h42q4 0 4 5v18z" fill="#6e8f7a"/><path d="M5 15V12q0-8 8-8h42q4 0 4 5v6z" fill="#f1efe6"/><path d="M7 13l2-6h5v6zM17 7h9v6h-9zM29 7h9v6h-9zM41 7h9v6h-9zM52 7h5v6h-5z" fill="#cfe2ea"/><circle cx="16" cy="28" r="4.5" fill="#1b1d1f"/><circle cx="48" cy="28" r="4.5" fill="#1b1d1f"/></svg><span>VW-busje</span><small>95 km/u</small></button>
       </div>
-      <p id="introText">Je groene Piaggio Ape staat voor Soemeersingel 25. Het adres ligt aan de overkant van de Helenavaart. Volg het kanaal naar het noorden, steek over en zet de Ape bij het paaltje van nummer 42. Pas op: de laanbomen hebben de singel en de Koolweg vol wortelbulten gedrukt.</p>
+      <p id="introText"></p>
       <div class="route">
-        <span class="ar">↑</span><span>Vanaf Soemeersingel 25, langs de Helenavaart</span><span class="km"></span>
-        <span class="ar">→</span><span>Brug bij Kamp Mariaveen</span><span class="km"></span>
-        <span class="ar">↖</span><span>Koolweg 42</span><span class="km" id="routeKm">1,9 km</span>
+        <span class="ar">↑</span><span>Start: Soemeersingel 25</span><span class="km">5:00</span>
+        <span class="ar">→</span><span id="firstAddr">Eerste adres</span><span class="km" id="routeKm"></span>
+        <span class="ar">★</span><span id="bestLine">Beste dienst</span><span class="km" id="bestPts"></span>
       </div>
       <div class="keys">
         <kbd>↑ / W</kbd><span id="kGas">gas geven (de Ape haalt 45 km/u)</span>
@@ -206,7 +241,7 @@ body.is-touch .tilt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
         <kbd>R</kbd><span>terug op de weg</span>
       </div>
       <p class="touch-help small">Schuif met je duim over het stuur links. Rechts zitten gas en rem. Met Snel rijd je opgevoerd, Cam wisselt de camera en Weg zet je terug op de weg. Liggend speelt het fijnst.</p>
-      <button class="btn" id="startBtn" type="button">Start de Ape</button>
+      <button class="btn" id="startBtn" type="button">Begin je dienst</button>
       <p class="credits">Kaart © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap-bijdragers</a> · gebouwen <a href="https://3dbag.nl" target="_blank" rel="noopener">3DBAG</a> (TU Delft, CC BY 4.0) · bomen <a href="https://www.ahn.nl" target="_blank" rel="noopener">AHN</a> · adressen en luchtfoto <a href="https://www.pdok.nl" target="_blank" rel="noopener">PDOK</a></p>
     </div>
   </div>
@@ -214,13 +249,13 @@ body.is-touch .tilt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
 
 <div class="overlay" id="endScreen" hidden>
   <div class="card" role="dialog" aria-labelledby="endTitle">
-    <div class="cap"><span>Aangekomen</span><span>Koolweg 42</span></div>
+    <div class="cap"><span>Dienst erop</span><span>Helenaveen</span></div>
     <div class="body">
-      <h1 id="endTitle">Op de <em>Koolweg</em>.</h1>
-      <div class="result" id="endTime">0:00,0</div>
+      <h1 id="endTitle">Dienst <em>erop</em>.</h1>
+      <div class="result" id="endScore">0 punten</div>
       <p id="endText"></p>
       <div class="small" id="bestText"></div>
-      <button class="btn" id="againBtn" type="button">Nog een keer</button>
+      <button class="btn" id="againBtn" type="button">Nog een dienst</button>
       <button class="btn secondary" id="roamBtn" type="button">Blijf rondrijden</button>
     </div>
   </div>
@@ -252,7 +287,13 @@ const [BX0, BZ0, BX1, BZ1] = W.bounds.map(D);
 const ROADS = W.roads.map((r) => ({ ...r, pts: r.n.map((i) => NODES[i]), name: r.s >= 0 ? W.names[r.s] : '', kind: W.roadKinds[r.k] }));
 const WATER = W.water.map((w) => ({ o: pairs(w.o), h: w.h.map(pairs) }));
 const WATERWAYS = W.waterways.map((w) => ({ p: pairs(w.p), w: w.w }));
-const DEST = { addr: W.dest.addr.map(D), gate: W.dest.gate.map(D), post: W.dest.post.map(D), node: W.dest.node };
+// bezorgadressen: elk adres van een woning of bedrijf, met de plek op de weg ervoor (gate), een paaltje bij de stoep
+// en het midden van het pand. DEST is het adres waar je nu heen moet.
+const ADDRS = W.addrs.map(([label, gx, gz, px, pz, node, cx, cz]) => {
+  const k = label.lastIndexOf(' ');
+  return { label, street: label.slice(0, k), num: label.slice(k + 1), gate: [D(gx), D(gz)], post: [D(px), D(pz)], node, addr: [D(cx), D(cz)] };
+});
+const DEST = { addr: W.dest.addr.map(D), gate: W.dest.gate.map(D), post: W.dest.post.map(D), node: W.dest.node, label: 'Koolweg 42', num: '42' };
 
 // ------------------------------------------------------------------ geometrie-hulpjes
 function pip(x, z, pts) {
@@ -1020,28 +1061,38 @@ const BUILD_SHAPES = [];
   }
 }
 
-// ------------------------------------------------------------------ de bestemming: Koolweg 42
+// ------------------------------------------------------------------ de bestemming: het adres van de huidige opdracht
 const destGroup = new THREE.Group();
 {
-  const [px, pz] = DEST.post;
   // adrespaaltje met huisnummerbordje
-  const pole = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.3, 0.12), new THREE.MeshStandardMaterial({ color: '#2f2f2f' })); pole.position.set(px, 0.65, pz);
+  const pole = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.3, 0.12), new THREE.MeshStandardMaterial({ color: '#2f2f2f' }));
   const cv = document.createElement('canvas'); cv.width = 256; cv.height = 160; const g = cv.getContext('2d');
-  g.fillStyle = '#1d4f91'; g.fillRect(0, 0, 256, 160); g.strokeStyle = '#f6f5ef'; g.lineWidth = 10; g.strokeRect(10, 10, 236, 140);
-  g.fillStyle = '#f6f5ef'; g.font = '900 104px Overpass, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('42', 128, 88);
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  const drawNum = () => {
+    g.fillStyle = '#1d4f91'; g.fillRect(0, 0, 256, 160); g.strokeStyle = '#f6f5ef'; g.lineWidth = 10; g.strokeRect(10, 10, 236, 140);
+    g.fillStyle = '#f6f5ef'; g.font = '900 104px Overpass, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const w = g.measureText(DEST.num).width; if (w > 200) g.font = `900 ${Math.floor(104 * 200 / w)}px Overpass, Arial, sans-serif`;
+    g.fillText(DEST.num, 128, 88); tex.needsUpdate = true;
+  };
+  document.fonts?.load('900 104px Overpass').then(drawNum).catch(() => {});
   const plate = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.47, 0.05), [0, 0, 0, 0, 1, 1].map((k) => k ? new THREE.MeshStandardMaterial({ map: tex }) : new THREE.MeshStandardMaterial({ color: '#1d4f91' })));
-  plate.position.set(px, 1.45, pz);
-  const ang = Math.atan2(DEST.gate[0] - DEST.addr[0], DEST.gate[1] - DEST.addr[1]); plate.rotation.y = ang; pole.castShadow = plate.castShadow = true;
+  pole.castShadow = plate.castShadow = true;
   // brievenbus
-  const box = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.35, 0.3), new THREE.MeshStandardMaterial({ color: '#c8102e', roughness: 0.5 })); box.position.set(px, 1.0, pz); box.rotation.y = ang; box.castShadow = true;
+  const box = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.35, 0.3), new THREE.MeshStandardMaterial({ color: '#c8102e', roughness: 0.5 })); box.castShadow = true;
   // lichtbaken dat je van ver ziet
   const beamMat = new THREE.MeshBasicMaterial({ color: '#ffd36a', transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide, fog: false });
-  const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 120, 24, 1, true), beamMat); beam.position.set(DEST.gate[0], 60, DEST.gate[1]);
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 120, 24, 1, true), beamMat);
   const ringMat = new THREE.MeshBasicMaterial({ color: '#ffd36a', transparent: true, opacity: 0.8, depthWrite: false });
-  const ring = new THREE.Mesh(new THREE.RingGeometry(3.2, 3.8, 48), ringMat); ring.rotation.x = -Math.PI / 2; ring.position.set(DEST.gate[0], 0.12, DEST.gate[1]);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(3.2, 3.8, 48), ringMat); ring.rotation.x = -Math.PI / 2;
+  const place = () => {
+    const [px, pz] = DEST.post, ang = Math.atan2(DEST.gate[0] - DEST.addr[0], DEST.gate[1] - DEST.addr[1]);
+    pole.position.set(px, 0.65, pz); plate.position.set(px, 1.45, pz); box.position.set(px, 1.0, pz); plate.rotation.y = box.rotation.y = ang;
+    beam.position.set(DEST.gate[0], 60, DEST.gate[1]); ring.position.set(DEST.gate[0], 0.12, DEST.gate[1]);
+    drawNum();
+  };
+  place();
   destGroup.add(pole, plate, box, beam, ring);
-  destGroup.userData = { beam, ring };
+  destGroup.userData = { beam, ring, place };
   scene.add(destGroup);
 }
 
@@ -1335,30 +1386,30 @@ function buildBus(V) {
 }
 
 const VEHICLES = {
-  ape: { id: 'ape', name: 'Ape', it: 'de Ape', title: 'Met de <em>Ape</em> naar Koolweg 42', desc: 'groene Piaggio Ape', build: buildApe,
+  ape: { id: 'ape', name: 'Ape', it: 'de Ape', title: 'Met de <em>Ape</em> door Helenaveen', desc: 'groene Piaggio Ape', build: buildApe,
     wb: 1.7, track: 1.12, wheelR: 0.245, front: 0.25, rear: 0.66, half: 0.66, three: true, rev: 22,
     vmax: 45, vturbo: 70, acc: 2.6, accT: 3.4, tip: { a0: 5.0, a1: 0.25, lift: 6.3, tip: 7.0 }, lean: 0.055,
     gears: [16, 31, 45], dial: 80, eye: [0, 1.44, -1.0], chase: [5.4, 2.1], orbit: 7, sound: { base: 38, span: 120, lp: 500, type: 'sawtooth' }, horn: [[415, 520], 'square'],
     turboLabel: 'OPGEVOERD', gasText: 'gas geven (de Ape haalt 45 km/u)', turboText: 'opgevoerd: tot 70 km/u', steerText: 'sturen; scherp sturen op snelheid kantelt hem',
-    tipText: 'een Ape neem je niet op vol stuur', endText: 'De kool staat bij de deur.' },
-  fiat: { id: 'fiat', name: 'Fiat 500', it: 'de Fiat', title: 'Met de <em>Fiat 500</em> naar Koolweg 42', desc: 'rode Fiat 500', build: buildFiat,
+    tipText: 'een Ape neem je niet op vol stuur', endText: 'De laadbak is leeg.' },
+  fiat: { id: 'fiat', name: 'Fiat 500', it: 'de Fiat', title: 'Met de <em>Fiat 500</em> door Helenaveen', desc: 'rode Fiat 500', build: buildFiat,
     wb: 1.84, track: 1.12, wheelR: 0.27, tyreW: 0.13, front: 0.56, rear: 0.57, half: 0.67, rev: 32,
     vmax: 85, vturbo: 95, acc: 2.3, accT: 2.7, grip: 7.8, lean: 0.04,
     gears: [25, 45, 65, 95], dial: 120, eye: [-0.3, 1.13, -1.28], chase: [5.8, 2.0], orbit: 7, sound: { base: 30, span: 88, lp: 420, type: 'square' }, horn: [[520, 620], 'square'],
     turboLabel: 'PLANKGAS', gasText: 'gas geven (de Fiat haalt 85 km/u)', turboText: 'plankgas: tot 95 km/u', steerText: 'sturen',
     endText: 'Het linnen dak mag open.' },
-  kever: { id: 'kever', name: 'Kever', it: 'de Kever', title: 'Met de <em>Kever</em> naar Koolweg 42', desc: 'rode Volkswagen Kever', build: buildKever,
+  kever: { id: 'kever', name: 'Kever', it: 'de Kever', title: 'Met de <em>Kever</em> door Helenaveen', desc: 'rode Volkswagen Kever', build: buildKever,
     wb: 2.4, track: 1.32, wheelR: 0.31, tyreW: 0.16, front: 0.86, rear: 0.82, half: 0.8, rev: 35,
     vmax: 100, vturbo: 120, acc: 2.7, accT: 3.2, grip: 8.2, lean: 0.05,
     gears: [30, 55, 85, 120], dial: 140, eye: [-0.33, 1.24, -1.62], chase: [6.4, 2.2], orbit: 8, sound: { base: 24, span: 76, lp: 360, type: 'sawtooth' }, horn: [[440, 554], 'sawtooth'],
     turboLabel: 'PLANKGAS', gasText: 'gas geven (de Kever haalt 100 km/u)', turboText: 'plankgas: tot 120 km/u', steerText: 'sturen',
     endText: 'De boxermotor tikt nog even na.' },
-  bus: { id: 'bus', name: 'VW-busje', it: 'het busje', title: 'Met het <em>VW-busje</em> naar Koolweg 42', desc: 'Samtgrüne Volkswagen T2', build: buildBus,
+  bus: { id: 'bus', name: 'VW-busje', it: 'het busje', title: 'Met het <em>VW-busje</em> door Helenaveen', desc: 'Samtgrüne Volkswagen T2', build: buildBus,
     wb: 2.4, track: 1.4, wheelR: 0.33, tyreW: 0.19, front: 0.75, rear: 1.36, half: 0.9, rev: 30,
     vmax: 95, vturbo: 110, acc: 2.0, accT: 2.4, tip: { a0: 6.0, a1: 0.12, lift: 7.4, tip: 8.4 }, lean: 0.08,
     gears: [25, 50, 75, 110], dial: 140, eye: [-0.42, 1.78, -2.45], chase: [7.4, 2.9], orbit: 9, sound: { base: 22, span: 70, lp: 340, type: 'sawtooth' }, horn: [[330, 415], 'sawtooth'],
     turboLabel: 'PLANKGAS', gasText: 'gas geven (het busje haalt 95 km/u)', turboText: 'plankgas: tot 110 km/u', steerText: 'sturen; een vol busje helt flink over in de bocht',
-    tipText: 'een busje is hoog, neem de bocht rustiger', endText: 'Schuifdeur open, je bent er.' },
+    tipText: 'een busje is hoog, neem de bocht rustiger', endText: 'Schuifdeur dicht, klaar voor vandaag.' },
 };
 let VEH = VEHICLES.ape;
 function setVehicle(id) {
@@ -1756,18 +1807,33 @@ ROADS.forEach((r) => {
     GRAPH.get(a).push([b, w]); GRAPH.get(b).push([a, w]);
   }
 });
-// afstanden vanaf de bestemming, eenmalig (het net is ongericht)
-const distTo = new Map(), nextHop = new Map();
-{
-  const heap = [[0, DEST.node]]; distTo.set(DEST.node, 0);
-  const push = (x) => { heap.push(x); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
-  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
-  heap.length = 0; push([0, DEST.node]);
-  while (heap.length) {
-    const [d, u] = pop(); if (d > distTo.get(u)) continue;
-    for (const [v, w] of GRAPH.get(u) || []) { const nd = d + w; if (nd < (distTo.get(v) ?? Infinity)) { distTo.set(v, nd); nextHop.set(v, u); push([nd, v]); } }
+// binaire heap van [sleutel, knoop] voor Dijkstra en A*
+class Heap {
+  constructor() { this.a = []; }
+  get size() { return this.a.length; }
+  push(k, v) { const a = this.a; a.push([k, v]); let i = a.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (a[p][0] <= a[i][0]) break; [a[p], a[i]] = [a[i], a[p]]; i = p; } }
+  pop() { const a = this.a, top = a[0], last = a.pop(); if (a.length) { a[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < a.length && a[l][0] < a[m][0]) m = l; if (r < a.length && a[r][0] < a[m][0]) m = r; if (m === i) break; [a[m], a[i]] = [a[i], a[m]]; i = m; } } return top; }
+}
+// afstanden over de weg vanaf een knoop (het net is ongericht); prev wijst de kortste weg terug
+function shortest(src, dist, prev) {
+  dist.clear(); prev?.clear(); dist.set(src, 0); const h = new Heap(); h.push(0, src);
+  while (h.size) {
+    const [d, u] = h.pop(); if (d > dist.get(u)) continue;
+    for (const [v, w] of GRAPH.get(u) || []) { const nd = d + w; if (nd < (dist.get(v) ?? Infinity)) { dist.set(v, nd); prev?.set(v, u); h.push(nd, v); } }
   }
 }
+// eind van het dichtstbijzijnde stuk rijweg
+function nearestNode(x, z) {
+  let best = null;
+  for (const [ri, i] of roadGrid.near(x, z)) { const r = ROADS[ri]; if (!r.d) continue; const s = segDist(x, z, r.pts[i][0], r.pts[i][1], r.pts[i + 1][0], r.pts[i + 1][1]); if (!best || s.d < best.d) best = { d: s.d, n: s.t < 0.5 ? r.n[i] : r.n[i + 1] }; }
+  if (best) return best.n;
+  let bn = null, bd = Infinity; for (const n of GRAPH.keys()) { const d = Math.hypot(NODES[n][0] - x, NODES[n][1] - z); if (d < bd) { bd = d; bn = n; } }
+  return bn;
+}
+// afstanden naar de bestemming, opnieuw bij elk nieuw adres
+const distTo = new Map(), nextHop = new Map();
+function routeToDest() { shortest(DEST.node, distTo, nextHop); }
+routeToDest();
 function routeFrom(x, z) {
   // dichtstbijzijnde stuk weg, en dan het eind van dat stuk dat het dichtst bij de bestemming ligt
   let best = null;
@@ -1792,6 +1858,486 @@ function routeFrom(x, z) {
   while (n !== DEST.node && nextHop.has(n)) { n = nextHop.get(n); path.push(NODES[n]); }
   path.push(DEST.gate);
   return { path, dist: best.tot - best.off * 0.5 + Math.hypot(NODES[DEST.node][0] - DEST.gate[0], NODES[DEST.node][1] - DEST.gate[1]) };
+}
+
+// ------------------------------------------------------------------ politie
+// Er rijden steeds twee politiewagens in de buurt rond. Zien ze je te hard rijden, dan gaan zwaailicht en
+// sirene aan en komen ze achter je aan, zoals in GTA: hoe langer het duurt, hoe meer sterren en hoe meer
+// wagens. Blijf lang genoeg uit hun zicht en ze geven het op; sta je stil met een politiewagen tegen je aan,
+// dan ben je aangehouden en kost de bekeuring punten.
+const COPS = (() => {
+  const NP = 2, MAXC = MOBILE ? 2 : 3, SIGHT = 60, SIGHT_CHASE = 120;
+  const ek = (a, b) => a * 100000 + b, EDGE = new Map();
+  ROADS.forEach((r) => { if (r.d) for (let i = 0; i < r.n.length - 1; i++) { EDGE.set(ek(r.n[i], r.n[i + 1]), r); EDGE.set(ek(r.n[i + 1], r.n[i]), r); } });
+  // plekken om een wagen neer te zetten: knopen aan verharde weg, binnen de kaart
+  const SPOTS = [...GRAPH.keys()].filter((n) => { const [x, z] = NODES[n]; return x > BX0 + 40 && x < BX1 - 40 && z > BZ0 + 40 && z < BZ1 - 40 && GRAPH.get(n).some(([m]) => !EDGE.get(ek(n, m)).u); });
+  const wrap = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const dist = (c) => Math.hypot(c.x - state.x, c.z - state.z);
+
+  // ---- het model: een witte stationwagen met een blauwe band, POLITIE op de flanken en een lichtbalk
+  const M = (() => {
+    const tmp = new THREE.Group(), C = (hex) => new THREE.MeshStandardMaterial({ color: hex });
+    const white = C('#f2f2ee'), black = C('#1b1d1f'), grey = C('#8d9196'), lamp = C('#fff6dc'), red = C('#c01818'), amber = C('#ff9a1a');
+    const wb = 2.64, fr = 0.84, L = 4.5, NOSE = -(wb + fr), wr = 0.31, R = wr + 0.05, fw = fr, rw = fr + wb;
+    const p = new THREE.Shape();
+    p.moveTo(0.1, wr); p.quadraticCurveTo(-0.02, 0.32, 0.0, 0.52); p.lineTo(0.02, 0.8); p.quadraticCurveTo(0.06, 0.88, 0.3, 0.89);
+    p.lineTo(1.27, 0.94); p.lineTo(1.78, 1.38); p.quadraticCurveTo(1.86, 1.44, 2.0, 1.44); p.lineTo(4.3, 1.44); p.quadraticCurveTo(4.44, 1.44, 4.46, 1.34);
+    p.lineTo(L, 0.98); p.lineTo(L, 0.45); p.quadraticCurveTo(L, wr, L - 0.14, wr);
+    p.lineTo(rw + R, wr); p.absarc(rw, wr, R, 0, Math.PI, false); p.lineTo(fw + R, wr); p.absarc(fw, wr, R, 0, Math.PI, false); p.lineTo(0.1, wr);
+    add(tmp, profileBody(p, 1.74, NOSE, 0.07), white, 0, 0, 0);
+    slopedGlass(tmp, [1.29, 0.96], [1.77, 1.37], 1.5, NOSE, 0.075);
+    slopedGlass(tmp, [4.47, 1.33], [L, 1.0], 1.44, NOSE, 0.06);
+    sideGlass(tmp, [[1.4, 0.98], [1.82, 1.36], [2.62, 1.36], [2.62, 0.98]], 0.87, NOSE);
+    sideGlass(tmp, [[2.72, 0.98], [2.72, 1.36], [3.52, 1.36], [3.52, 0.98]], 0.87, NOSE);
+    sideGlass(tmp, [[3.62, 0.98], [3.62, 1.36], [4.36, 1.36], [4.42, 0.98]], 0.87, NOSE);
+    add(tmp, new THREE.BoxGeometry(1.5, 0.12, L - 0.9), black, 0, 0.27, NOSE + L / 2);
+    for (const z of [NOSE - 0.03, NOSE + L + 0.03]) add(tmp, new THREE.BoxGeometry(1.8, 0.14, 0.14), black, 0, 0.4, z);
+    add(tmp, new THREE.BoxGeometry(0.84, 0.17, 0.04), black, 0, 0.66, NOSE - 0.005);
+    for (const s of [-1, 1]) {
+      add(tmp, new THREE.BoxGeometry(0.3, 0.15, 0.04), lamp, s * 0.6, 0.66, NOSE - 0.005);
+      add(tmp, new THREE.BoxGeometry(0.12, 0.08, 0.04), amber, s * 0.78, 0.5, NOSE);
+      add(tmp, new THREE.BoxGeometry(0.14, 0.42, 0.04), red, s * 0.74, 0.74, NOSE + L + 0.02);
+      add(tmp, new THREE.BoxGeometry(0.06, 0.1, 0.16), black, s * 0.93, 1.02, NOSE + 1.5);
+      for (const z of [2.67, 3.57]) { add(tmp, new THREE.BoxGeometry(0.012, 0.3, 0.012), black, s * 0.874, 0.5, NOSE + z); add(tmp, new THREE.BoxGeometry(0.012, 0.06, 0.012), black, s * 0.874, 0.93, NOSE + z); } // deurnaden boven en onder de band
+    }
+    add(tmp, new THREE.BoxGeometry(1.26, 0.06, 0.32), black, 0, 1.5, NOSE + 2.25);
+    // alles in één geometrie met de kleur per hoekpunt: één draw call voor de hele carrosserie
+    const bake = (group) => {
+      group.updateMatrixWorld(true); const geos = [];
+      group.traverse((m) => {
+        if (!m.isMesh) return;
+        const g = (m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone()).applyMatrix4(m.matrixWorld);
+        for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k);
+        const c = m.material.color, n = g.attributes.position.count, col = new Float32Array(n * 3);
+        for (let i = 0; i < n; i++) { col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; }
+        g.setAttribute('color', new THREE.BufferAttribute(col, 3)); geos.push(g);
+      });
+      return mergeGeometries(geos);
+    };
+    const body = bake(tmp);
+    const wg = new THREE.Group();
+    const tyre = new THREE.CylinderGeometry(wr, wr, 0.2, 18); tyre.rotateZ(Math.PI / 2); add(wg, tyre, black, 0, 0, 0);
+    const hub = new THREE.CylinderGeometry(0.18, 0.18, 0.206, 12); hub.rotateZ(Math.PI / 2); add(wg, hub, grey, 0, 0, 0);
+    add(wg, new THREE.BoxGeometry(0.212, 0.05, 0.3), black, 0, 0, 0);
+    const wheel = bake(wg);
+    // blauwe band met POLITIE, eronder een oranjerode streep, schuine strepen aan de uiteinden
+    const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 64; const g = cv.getContext('2d');
+    const liveryTex = new THREE.CanvasTexture(cv); liveryTex.colorSpace = THREE.SRGBColorSpace; liveryTex.anisotropy = 4;
+    const drawLivery = () => {
+      g.fillStyle = '#f2f2ee'; g.fillRect(0, 0, 1024, 64);
+      g.fillStyle = '#1f3d8c'; g.fillRect(0, 0, 1024, 42);
+      g.fillStyle = '#e8541e'; g.fillRect(0, 47, 1024, 17);
+      g.fillStyle = '#f2f2ee';
+      for (const side of [0, 1]) for (let k = 0; k < 3; k++) { const x = side ? 1024 - 60 - k * 34 : 60 + k * 34; g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 14, 0); g.lineTo(x - 6, 42); g.lineTo(x - 20, 42); g.closePath(); g.fill(); }
+      g.font = '900 36px Overpass, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('POLITIE', 512, 24);
+      liveryTex.needsUpdate = true;
+    };
+    drawLivery(); document.fonts?.load('900 36px Overpass').then(drawLivery).catch(() => {});
+    const lw = 3.75, lz = NOSE + 0.55 + lw / 2;
+    const right = new THREE.PlaneGeometry(lw, 0.22); right.rotateY(Math.PI / 2); right.translate(0.878, 0.78, lz);
+    const left = new THREE.PlaneGeometry(lw, 0.22); left.rotateY(-Math.PI / 2); left.translate(-0.878, 0.78, lz);
+    // gloed rond de zwaailichten
+    const gc = document.createElement('canvas'); gc.width = gc.height = 64; const gg = gc.getContext('2d');
+    const grd = gg.createRadialGradient(32, 32, 0, 32, 32, 32); grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.25, 'rgba(255,255,255,.55)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+    gg.fillStyle = grd; gg.fillRect(0, 0, 64, 64);
+    return {
+      body, wheel, livery: mergeGeometries([right, left]), lampGeo: new THREE.BoxGeometry(0.5, 0.12, 0.26), wr, barZ: NOSE + 2.25,
+      bodyMat: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.38, metalness: 0.1, side: THREE.DoubleSide }),
+      liveryMat: new THREE.MeshStandardMaterial({ map: liveryTex, roughness: 0.4, metalness: 0.1 }),
+      glowMat: new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(gc), color: '#2f62ff', opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }),
+      wheels: [[-0.74, 0], [0.74, 0], [-0.74, -wb], [0.74, -wb]],
+      circ: [NOSE + 0.87, NOSE + 2.25, 0.16], R: 0.87, // botscirkels langs de lengteas
+    };
+  })();
+
+  const cars = [];
+  function makeCar(extra = false) {
+    const root = new THREE.Group();
+    const body = new THREE.Mesh(M.body, M.bodyMat); body.castShadow = true; body.receiveShadow = true;
+    root.add(body, new THREE.Mesh(M.livery, M.liveryMat));
+    const wheels = M.wheels.map(([x, z]) => { const w = new THREE.Mesh(M.wheel, M.bodyMat); w.position.set(x, M.wr, z); w.castShadow = true; root.add(w); return w; });
+    const lamps = [-1, 1].map((s) => {
+      const mat = new THREE.MeshStandardMaterial({ color: '#2f5bff', emissive: '#2a5cff', emissiveIntensity: 0.15, roughness: 0.3 });
+      const m = new THREE.Mesh(M.lampGeo, mat); m.position.set(s * 0.32, 1.59, M.barZ);
+      const glow = new THREE.Sprite(M.glowMat); glow.scale.set(1.5, 1.5, 1); glow.position.set(s * 0.32, 1.62, M.barZ); glow.visible = false;
+      root.add(m, glow); return { mat, glow };
+    });
+    root.visible = false; scene.add(root);
+    const c = { root, wheels, lamps, extra, x: 0, z: 0, h: 0, v: 0, y: 0, wr: 0, gap: Infinity, mode: 'off', route: [], prev: [0, 0], prevNode: -1, plan: 0, stuck: 0, direct: false, search: false, hold: false, sees: false, limit: 50 };
+    cars.push(c); return c;
+  }
+  for (let i = 0; i < NP; i++) makeCar();
+
+  // ---- zicht: geen gebouw tussen a en b (om de 3 m gekeken); rechtstreeks rijden kan ook niet door het water
+  function sight(ax, az, bx, bz) {
+    const n = Math.floor(Math.hypot(bx - ax, bz - az) / 3);
+    for (let k = 1; k < n; k++) { const x = ax + (bx - ax) * k / n, z = az + (bz - az) * k / n; for (const bi of buildGrid.near(x, z)) if (pip(x, z, BUILD_SHAPES[bi])) return false; }
+    return true;
+  }
+  function open(ax, az, bx, bz) {
+    if (!sight(ax, az, bx, bz)) return false;
+    const n = Math.floor(Math.hypot(bx - ax, bz - az) / 2.5);
+    for (let k = 1; k < n; k++) { const x = ax + (bx - ax) * k / n, z = az + (bz - az) * k / n; if (inWater(x, z) && !roadAt(x, z)) return false; }
+    return true;
+  }
+  const tv = new THREE.Vector3();
+  function inView(x, z) { // staat het punt in beeld? dan zetten we daar niet ineens een wagen neer
+    const cx = camera.position.x, cz = camera.position.z, dx = x - cx, dz = z - cz, d = Math.hypot(dx, dz);
+    if (d > 320) return false; if (d < 25) return true;
+    camera.getWorldDirection(tv);
+    return (dx * tv.x + dz * tv.z) / (d * (Math.hypot(tv.x, tv.z) || 1)) > 0.4 && sight(cx, cz, x, z);
+  }
+
+  // ---- rijden over het wegennet: prev is de laatst gepasseerde knoop, route de knopen die nog komen
+  function place(c, n) {
+    const [x, z] = NODES[n];
+    Object.assign(c, { x, z, prevNode: n, prev: [x, z], route: [], direct: false, search: false, hold: false, stuck: 0, y: 0, v: 5 });
+    extend(c, state.x, state.z, 0);
+    if (c.route.length) { const [tx, tz] = NODES[c.route[0]]; c.h = Math.atan2(-(tx - x), -(tz - z)); }
+    c.root.visible = true;
+  }
+  function spawn(c, lo, hi, ahead) {
+    const fx = -Math.sin(state.h), fz = -Math.cos(state.h);
+    let best = null, bs = -Infinity;
+    for (let k = 0; k < 90; k++) {
+      const n = SPOTS[Math.floor(Math.random() * SPOTS.length)], [x, z] = NODES[n], dx = x - state.x, dz = z - state.z, d = Math.hypot(dx, dz);
+      if (d < lo || d > hi) continue;
+      let sc = Math.random() + (ahead ? (dx * fx + dz * fz) / d : 0);
+      if (inView(x, z)) sc -= 3;
+      if (cars.some((o) => o !== c && o.mode !== 'off' && Math.hypot(o.x - x, o.z - z) < 50)) sc -= 2;
+      if (sc > bs) { bs = sc; best = n; }
+    }
+    if (best === null) return false;
+    place(c, best); return true;
+  }
+  // patrouille: bij elke kruising een willekeurige kant op, met een voorkeur voor de kant van (tx, tz)
+  function extend(c, tx, tz, bias) {
+    let len = 0, px = c.x, pz = c.z;
+    for (const n of c.route) { len += Math.hypot(NODES[n][0] - px, NODES[n][1] - pz); [px, pz] = NODES[n]; }
+    while (len < 90 && c.route.length < 60) {
+      const k = c.route.length, last = k ? c.route[k - 1] : c.prevNode, before = k > 1 ? c.route[k - 2] : k === 1 ? c.prevNode : -1;
+      const all = (GRAPH.get(last) || []).map((e) => e[0]);
+      let opts = all.filter((n) => n !== before);
+      const paved = opts.filter((n) => !EDGE.get(ek(last, n)).u); if (paved.length) opts = paved;
+      if (!opts.length) opts = all;
+      if (!opts.length) return;
+      let n = opts[Math.floor(Math.random() * opts.length)];
+      if (opts.length > 1 && Math.random() < bias) n = opts.reduce((a, b) => (Math.hypot(NODES[b][0] - tx, NODES[b][1] - tz) < Math.hypot(NODES[a][0] - tx, NODES[a][1] - tz) ? b : a));
+      len += Math.hypot(NODES[n][0] - px, NODES[n][1] - pz); [px, pz] = NODES[n];
+      c.route.push(n);
+    }
+  }
+  function advance(c) {
+    while (c.route.length) {
+      const [nx, nz] = NODES[c.route[0]], s = segDist(c.x, c.z, c.prev[0], c.prev[1], nx, nz);
+      if (s.t < 0.999 && Math.hypot(nx - c.x, nz - c.z) > 3) break;
+      c.prevNode = c.route.shift(); c.prev = [nx, nz];
+    }
+  }
+  // rechts houden; in de achtervolging meer naar het midden
+  const laneOf = (r, c) => (c.mode === 'chase' ? 0.3 : 1) * (r.w >= 4.4 ? r.w * 0.25 : r.w >= 3.2 ? 0.55 : 0);
+  // doelpunt op de route, `look` meter vooruit
+  function follow(c, look) {
+    let ax = c.prev[0], az = c.prev[1], from = c.prevNode;
+    const [b0x, b0z] = NODES[c.route[0]], s0 = segDist(c.x, c.z, ax, az, b0x, b0z);
+    let px = s0.x, pz = s0.z, rem = look;
+    for (let k = 0; k < c.route.length; k++) {
+      const n = c.route[k], [bx, bz] = NODES[n], L = Math.hypot(bx - px, bz - pz), last = k === c.route.length - 1;
+      if (L >= rem || last) {
+        const f = L > 1e-6 ? Math.min(1, rem / L) : 0, sx = bx - ax, sz = bz - az, SL = Math.hypot(sx, sz) || 1;
+        const r = EDGE.get(ek(from, n)), lane = r ? laneOf(r, c) : 0;
+        return { x: px + (bx - px) * f - (sz / SL) * lane, z: pz + (bz - pz) * f + (sx / SL) * lane, end: last && L < rem, r };
+      }
+      rem -= L; px = ax = bx; pz = az = bz; from = n;
+    }
+  }
+  function drive(c, dt) {
+    const chase = c.mode === 'chase';
+    // in de achtervolging wat langzamer dan jouw wagen op zijn hardst: met plankgas en scherpe bochten kun je ze kwijtraken
+    let cruise = chase ? Math.max(50, VEH.vturbo * 0.9) / 3.6 : Math.min(c.limit, 50) / 3.6;
+    let tx, tz, vd;
+    if (c.direct) {
+      const d = dist(c), lead = Math.min(0.6, d / 20);
+      tx = state.x - Math.sin(state.h) * state.v * lead; tz = state.z - Math.cos(state.h) * state.v * lead;
+      const rd = roadAt(c.x, c.z, 0.5); if (!rd) cruise = Math.min(cruise, 40 / 3.6); else if (rd.r.u) cruise = Math.min(cruise, 50 / 3.6);
+      // aansluiten op een paar meter achter je bumper; val je stil, dan rijden ze tegen je aan
+      const want = Math.abs(state.v) < 3 ? 0.6 : 3;
+      vd = c.gap < 14 ? clamp(Math.abs(state.v) + clamp((c.gap - want) * 1.2, -5, 6), 0, cruise) : cruise;
+    } else {
+      advance(c);
+      if (c.route.length < 2 && (!chase || c.search)) extend(c, c.search ? lastKnown.x : state.x, c.search ? lastKnown.z : state.z, c.search ? 0.6 : c.mode === 'patrol' ? 0.35 : 0);
+      if (!c.route.length) { vd = 0; tx = c.x - Math.sin(c.h); tz = c.z - Math.cos(c.h); }
+      else {
+        const near = follow(c, 4 + c.v * 0.55), far = follow(c, 16 + c.v * 1.3);
+        if (near.r) { c.limit = near.r.v || 50; if (near.r.u) cruise = Math.min(cruise, 50 / 3.6); }
+        tx = near.x; tz = near.z;
+        const fd = Math.abs(wrap(Math.atan2(-(far.x - c.x), -(far.z - c.z)) - c.h));
+        vd = cruise * (fd > 1.1 ? 0.32 : fd > 0.6 ? 0.55 : fd > 0.3 ? 0.8 : 1);
+        if (far.end) vd = Math.min(vd, Math.max(0, Math.hypot(far.x - c.x, far.z - c.z) - 3) * 0.7);
+      }
+    }
+    const diff = wrap(Math.atan2(-(tx - c.x), -(tz - c.z)) - c.h);
+    if (Math.abs(diff) > 1.3) vd = Math.min(vd, 4.5);
+    if (c.hold) vd = 0;
+    const v = Math.max(0, c.v), yawMax = Math.max(0.5, Math.min(v / 4.2, 9 / Math.max(1, v)));
+    c.h += clamp(diff * 2.8, -yawMax, yawMax) * dt * Math.min(1, 0.25 + v / 2);
+    c.v = vd > c.v ? Math.min(vd, c.v + (chase ? 4.5 : 2.4) * dt) : Math.max(vd, c.v - 8 * dt);
+    c.x += -Math.sin(c.h) * c.v * dt; c.z += -Math.cos(c.h) * c.v * dt;
+  }
+  function pose(c, dt, now) {
+    const rd = roadAt(c.x, c.z, 0.3), y = rd && rd.r.b ? bridgeHeightAt(rd.r, rd.i, rd.t) : 0;
+    c.y += (y - c.y) * Math.min(1, dt * 10);
+    c.root.position.set(c.x, c.y + 0.02, c.z); c.root.rotation.y = c.h;
+    c.wr += c.v * dt / M.wr; for (const w of c.wheels) w.rotation.x = -c.wr;
+    // zwaailicht: links twee flitsen, dan rechts twee
+    const on = c.mode === 'chase' || c.hold, ph = Math.floor(now / 90) % 8;
+    c.lamps.forEach((l, i) => { const lit = on && (i ? ph === 4 || ph === 6 : ph === 0 || ph === 2); l.mat.emissiveIntensity = lit ? 3 : 0.15; l.glow.visible = lit; });
+  }
+
+  // ---- de achtervolging: A* over het wegennet naar jou (of naar waar ze je het laatst zagen)
+  function nearSeg(x, z) {
+    let best = null;
+    for (let gx = -1; gx <= 1; gx++) for (let gz = -1; gz <= 1; gz++) for (const [ri, i] of roadGrid.near(x + gx * 25, z + gz * 25)) {
+      const r = ROADS[ri]; if (!r.d) continue; const s = segDist(x, z, r.pts[i][0], r.pts[i][1], r.pts[i + 1][0], r.pts[i + 1][1]);
+      if (!best || s.d < best.d) best = { d: s.d, a: r.n[i], b: r.n[i + 1] };
+    }
+    return best;
+  }
+  function snap(c) { // terug op het wegennet, met de neus de goede kant op
+    const s = nearSeg(c.x, c.z);
+    if (!s) { const n = nearestNode(c.x, c.z); c.prevNode = n; c.prev = [c.x, c.z]; c.route = [n]; return; }
+    const [ax, az] = NODES[s.a], [bx, bz] = NODES[s.b], fwd = (bx - ax) * -Math.sin(c.h) + (bz - az) * -Math.cos(c.h) > 0;
+    c.prevNode = fwd ? s.a : s.b; c.prev = NODES[c.prevNode].slice(); c.route = [fwd ? s.b : s.a];
+  }
+  function goals(x, z) { const s = nearSeg(x, z); return s && s.d < 40 ? new Set([s.a, s.b]) : new Set([nearestNode(x, z)]); }
+  function astar(c, goal, gx, gz) {
+    const g = new Map(), prev = new Map(), h = new Heap(), H = (n) => Math.hypot(NODES[n][0] - gx, NODES[n][1] - gz);
+    const starts = [];
+    if (c.route.length) starts.push([c.route[0], Math.hypot(NODES[c.route[0]][0] - c.x, NODES[c.route[0]][1] - c.z)]);
+    if (c.prevNode >= 0) starts.push([c.prevNode, Math.hypot(c.prev[0] - c.x, c.prev[1] - c.z) + (c.route.length ? 14 : 0)]); // omkeren kost wat
+    for (const [n, d] of starts) if (d < (g.get(n) ?? Infinity)) { g.set(n, d); h.push(d + H(n), n); }
+    for (let guard = 0; h.size && guard < 6000; guard++) {
+      const [f, u] = h.pop(), gu = g.get(u); if (f > gu + H(u) + 1e-6) continue;
+      if (goal.has(u)) { const path = [u]; let n = u; while (prev.has(n)) { n = prev.get(n); path.unshift(n); } return path; }
+      for (const [v, w] of GRAPH.get(u) || []) { const nd = gu + w; if (nd < (g.get(v) ?? Infinity)) { g.set(v, nd); prev.set(v, u); h.push(nd + H(v), v); } }
+    }
+    return null;
+  }
+  function plan(c, now) {
+    const seen = now - lastSeen < 450, d = dist(c);
+    if (seen && d < 45 && open(c.x, c.z, state.x, state.z)) { c.direct = true; c.search = false; return; }
+    if (c.direct || !c.route.length) { c.direct = false; snap(c); }
+    else if (segDist(c.x, c.z, c.prev[0], c.prev[1], NODES[c.route[0]][0], NODES[c.route[0]][1]).d > 12) snap(c);
+    const gx = seen ? state.x : lastKnown.x, gz = seen ? state.z : lastKnown.z;
+    // daar waar ze je kwijtraakten: rondrijden en zoeken
+    if (!seen && Math.hypot(gx - c.x, gz - c.z) < 25) { if (!c.search) { c.search = true; c.route = c.route.slice(0, 1); } return; }
+    c.search = false;
+    const path = astar(c, goals(gx, gz), gx, gz);
+    if (!path) return;
+    if (c.route.length && path[0] === c.prevNode && path[0] !== c.route[0]) { const r0 = c.route[0]; c.prevNode = r0; c.prev = NODES[r0].slice(); } // omkeren
+    c.route = path;
+  }
+
+  // ---- botsen: elke wagen als een rij cirkels langs de lengteas
+  const P = [], Q = [];
+  const circles = (x, z, h, ws, out) => { const s = Math.sin(h), co = Math.cos(h); out.length = 0; for (const w of ws) out.push(x + w * s, z + w * co); return out; };
+  function collide(now) {
+    minGap = Infinity;
+    const nose = VEH.wb + VEH.front, a = -nose + VEH.half, b = VEH.rear - VEH.half, n = Math.max(2, Math.ceil((b - a) / (VEH.half * 1.2)) + 1), pr = VEH.half + 0.05;
+    const pws = []; for (let k = 0; k < n; k++) pws.push(a + (b - a) * k / (n - 1));
+    circles(state.x, state.z, state.h, pws, P);
+    for (const c of cars) {
+      c.gap = Infinity;
+      if (c.mode === 'off' || Math.abs(c.x - state.x) > 20 || Math.abs(c.z - state.z) > 20) continue;
+      circles(c.x, c.z, c.h, M.circ, Q);
+      let gap = Infinity, nx = 0, nz = 0;
+      for (let i = 0; i < P.length; i += 2) for (let j = 0; j < Q.length; j += 2) { const dx = P[i] - Q[j], dz = P[i + 1] - Q[j + 1], d = Math.hypot(dx, dz) || 1e-3, gp = d - pr - M.R; if (gp < gap) { gap = gp; nx = dx / d; nz = dz / d; } }
+      c.gap = gap; // ruimte tussen de carrosserieën
+      if (c.mode === 'chase') minGap = Math.min(minGap, gap);
+      if (gap >= 0) continue;
+      const qx = state.x - nx * gap * 0.6, qz = state.z - nz * gap * 0.6;
+      if (!state.event && !blocked(qx, qz, state.h, roadAt(qx, qz, 0.3))) { state.x = qx; state.z = qz; c.x += nx * gap * 0.4; c.z += nz * gap * 0.4; }
+      else { c.x += nx * gap; c.z += nz * gap; }
+      // snelheden langs de botsnormaal uitwisselen (gelijke massa's, wat demping)
+      const pfx = -Math.sin(state.h), pfz = -Math.cos(state.h), cfx = -Math.sin(c.h), cfz = -Math.cos(c.h);
+      const vpx = pfx * state.v, vpz = pfz * state.v, vcx = cfx * c.v, vcz = cfz * c.v;
+      const rel = (vpx - vcx) * nx + (vpz - vcz) * nz;
+      if (rel >= 0) continue;
+      const j = -1.3 * rel / 2;
+      if (!state.event) state.v = (vpx + j * nx) * pfx + (vpz + j * nz) * pfz;
+      c.v = Math.max(0, (vcx - j * nx) * cfx + (vcz - j * nz) * cfz);
+      if (-rel > 2.5) bonk();
+      // reed jij erop in? (jouw snelheid naar de wagen toe)
+      if (vpx * nx + vpz * nz < -5 && now > ramCool) { ramCool = now + 3000; if (!wanted) startChase(c, now, 'je ramde een politiewagen'); else if (wanted < 3) raise(now, 'je ramde een politiewagen'); }
+    }
+    for (let i = 0; i < cars.length; i++) for (let k = i + 1; k < cars.length; k++) {
+      const A = cars[i], B = cars[k]; if (A.mode === 'off' || B.mode === 'off') continue;
+      const dx = A.x - B.x, dz = A.z - B.z, d = Math.hypot(dx, dz); if (d > 3.4 || d < 1e-3) continue;
+      const o = (3.4 - d) / 2; A.x += dx / d * o; A.z += dz / d * o; B.x -= dx / d * o; B.z -= dz / d * o;
+    }
+  }
+
+  // ---- gezocht
+  let wanted = 0, lastSeen = 0, lastKnown = { x: 0, z: 0 }, chaseT = 0, grace = 0, nextReinf = 0, ramCool = 0, bustT = 0, minGap = Infinity, tick = 0, active = false;
+  const target = () => Math.min(MAXC, wanted), chasing = () => cars.filter((c) => c.mode === 'chase').length;
+  const searchTime = () => (8 + wanted * 3) * 1000;
+  function join(c) { c.mode = 'chase'; c.plan = 0; c.search = false; c.direct = false; }
+  function startChase(c, now, why) {
+    wanted = 1; chaseT = 0; lastSeen = now; lastKnown = { x: state.x, z: state.z }; nextReinf = now + 4000; join(c);
+    showToast('Politie!', why, 2200);
+  }
+  function raise(now, why) { wanted = Math.min(3, wanted + 1); nextReinf = now; showToast('Versterking!', why, 1800); }
+  function reinforce() {
+    const pat = cars.filter((c) => c.mode === 'patrol').sort((a, b) => dist(a) - dist(b))[0];
+    if (pat) { join(pat); return; }
+    const c = cars.find((o) => o.mode === 'off') || (cars.length < MAXC + 1 ? makeCar(true) : null);
+    if (c && spawn(c, 160, 260, true)) join(c);
+  }
+  function calmDown(now, pause) { // achtervolging voorbij: terug naar de patrouille, extra wagens rijden weg
+    wanted = 0; grace = now + pause; bustT = 0;
+    for (const c of cars) { c.hold = false; if (c.mode === 'chase') { c.mode = c.extra ? 'leave' : 'patrol'; c.direct = false; c.search = false; snap(c); } }
+  }
+  function escape(now) {
+    const bonus = state.mode === 'drive' ? 25 * wanted : 0;
+    if (bonus) GAME.score += bonus;
+    calmDown(now, 4000);
+    showToast('Je bent ze kwijt!', bonus ? `+${bonus} punten` : 'de politie geeft het op', 2000);
+  }
+  function bust(now) {
+    const fine = 100 * wanted, shift = state.mode === 'drive';
+    if (shift) { GAME.score = Math.max(0, GAME.score - fine); GAME.fines++; }
+    state.event = 'busted'; state.eventT = 0; $('tilt').hidden = true;
+    for (const c of cars) if (c.mode === 'chase') c.hold = true;
+    beep([294, 220], 0.45, 'square', 0.14);
+    showToast('Aangehouden!', shift ? `bekeuring: ${fine} punten` : 'met een waarschuwing mag je door', 2800);
+  }
+  function think(now) {
+    const kmh = Math.abs(state.v) * 3.6, speeding = !state.event && kmh > state.limit + 5;
+    let seenNow = false;
+    for (const c of cars) {
+      if (c.mode === 'off') continue;
+      const d = dist(c);
+      c.sees = d < (wanted ? SIGHT_CHASE : SIGHT) && sight(c.x, c.z, state.x, state.z);
+      if (wanted && c.sees) { seenNow = true; if (c.mode !== 'chase' && chasing() < target()) join(c); }
+      else if (!wanted && c.sees && speeding && now > grace && c.mode === 'patrol') { startChase(c, now, `je reed ${Math.round(kmh)} waar ${state.limit} mag`); seenNow = true; }
+      c.stuck = c.v < 0.7 && !c.hold && !(c.mode === 'chase' && d < 12) ? c.stuck + 0.2 : 0;
+    }
+    if (wanted && !state.event) {
+      if (seenNow) { lastSeen = now; lastKnown = { x: state.x, z: state.z }; }
+      chaseT += 0.2;
+      if ((wanted === 1 && chaseT > 35) || (wanted === 2 && chaseT > 75)) raise(now, 'ze roepen er een wagen bij');
+      if (now - lastSeen > searchTime()) escape(now);
+      else if (chasing() < target() && now > nextReinf) { nextReinf = now + 5000; reinforce(); }
+    }
+    for (const c of cars) {
+      if (c.mode === 'off') continue;
+      const d = dist(c);
+      if (c.mode === 'patrol' && !wanted && d > 650 && !inView(c.x, c.z)) spawn(c, 250, 450, Math.random() < 0.5);
+      else if (c.mode === 'leave' && d > 150 && !inView(c.x, c.z)) { c.mode = 'off'; c.root.visible = false; }
+      else if (c.mode === 'chase' && wanted >= 2 && d > 280 && now - lastSeen > 3000 && !inView(c.x, c.z)) { spawn(c, 140, 240, true); c.plan = 0; }
+      else if (c.stuck > 5 && !inView(c.x, c.z)) spawn(c, c.mode === 'chase' ? 120 : 250, c.mode === 'chase' ? 220 : 450, c.mode === 'chase');
+    }
+    // aanvullen tot er weer twee patrouilleren
+    if (!wanted && cars.filter((c) => c.mode === 'patrol').length < NP) { const c = cars.find((o) => o.mode === 'off' && !o.extra); if (c && spawn(c, 280, 500, false)) c.mode = 'patrol'; }
+  }
+
+  // ---- sirene: twee tonen, harder naarmate de dichtstbijzijnde wagen met zwaailicht dichterbij is
+  let siren = null;
+  function sirenUpdate(now) {
+    if (!audio) return;
+    let d = Infinity; if (active) for (const c of cars) if (c.mode === 'chase' || c.hold) d = Math.min(d, dist(c));
+    if (!siren) {
+      if (d === Infinity) return;
+      const { ctx, master } = audio, o1 = ctx.createOscillator(), o2 = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      o1.type = 'sawtooth'; o2.type = 'square'; f.type = 'lowpass'; f.frequency.value = 2200; g.gain.value = 0;
+      o1.connect(f); o2.connect(f); f.connect(g); g.connect(master); o1.start(); o2.start();
+      siren = { o1, o2, g };
+    }
+    const t = audio.ctx.currentTime, base = Math.floor(now / 520) % 2 ? 440 : 587;
+    siren.o1.frequency.setTargetAtTime(base, t, 0.012); siren.o2.frequency.setTargetAtTime(base * 1.005, t, 0.012);
+    siren.g.gain.setTargetAtTime(d < 300 ? 0.012 + 0.1 * Math.pow(1 - d / 300, 1.3) : 0, t, 0.12);
+  }
+  let hudKey = '';
+  function hud(now) {
+    const busted = state.event === 'busted', seen = wanted && now - lastSeen < 700;
+    const left = Math.max(0, Math.ceil((searchTime() - (now - lastSeen)) / 1000));
+    const key = `${wanted}|${seen}|${left}|${busted}`; if (key === hudKey) return; hudKey = key;
+    $('wanted').hidden = !wanted; $('flash').hidden = !wanted || !(seen || busted);
+    $('stars').textContent = '★'.repeat(wanted) + '☆'.repeat(3 - wanted);
+    $('wanted').dataset.seen = seen || busted ? '1' : '0';
+    $('wantedTxt').textContent = busted ? 'aangehouden' : seen ? 'ze zien je' : `uit het zicht · ${left}`;
+  }
+
+  function update(dt, now) {
+    if (!active) return;
+    if ((tick -= dt) <= 0) { tick = 0.2; think(now); }
+    for (const c of cars) {
+      if (c.mode === 'off') continue;
+      if (c.mode === 'chase' && !c.hold && (c.plan -= dt) <= 0) { c.plan = 0.45; plan(c, now); }
+      drive(c, dt); pose(c, dt, now);
+    }
+    collide(now);
+    if (wanted && !state.event && minGap < 2.2 && Math.abs(state.v) < 2.2) bustT += dt; else bustT = Math.max(0, bustT - dt);
+    if (bustT > 1.2) { bustT = 0; bust(now); }
+    sirenUpdate(now); hud(now);
+  }
+  function reset() {
+    const now = performance.now();
+    wanted = 0; chaseT = 0; bustT = 0; lastSeen = 0; grace = now + 3000; hudKey = ''; active = true;
+    for (const c of cars) { c.mode = 'off'; c.hold = false; c.root.visible = false; }
+    for (const c of cars) if (!c.extra && spawn(c, 300, 600, false)) c.mode = 'patrol';
+    hud(now);
+  }
+  function stop() {
+    active = false; $('wanted').hidden = true; $('flash').hidden = true; hudKey = '';
+    if (siren && audio) siren.g.gain.setTargetAtTime(0, audio.ctx.currentTime, 0.05);
+  }
+  return { update, reset, stop, release: (now) => calmDown(now, 8000), cars, sight, get wanted() { return wanted; },
+    // afstand van jouw achteras tot de achterbumper van een politiewagen die vlak achter je rijdt (0 als er geen is)
+    get behind() {
+      if (!active || !wanted) return 0;
+      const bx = Math.sin(state.h), bz = Math.cos(state.h); let best = 0;
+      for (const c of cars) {
+        if (c.mode !== 'chase' || c.gap > 12) continue;
+        const dx = c.x - state.x, dz = c.z - state.z, back = dx * bx + dz * bz, lat = dx * bz - dz * bx;
+        if (back > 0 && Math.abs(lat) < 5 && (!best || back + 1.1 < best)) best = back + 1.1;
+      }
+      return best;
+    }, get debug() { return { wanted, lastSeen, chaseT, bustT, minGap, grace }; } };
+})();
+
+// ------------------------------------------------------------------ bezorgen: een dienst van vijf minuten, punten per adres
+const SHIFT = 300;
+const GAME = { score: 0, delivered: 0, fines: 0, job: null, next: null, best: null, warnT: 0, tick: -1 };
+const fmtPts = (n) => n.toLocaleString('nl-NL');
+// een willekeurig adres op 400 tot 1400 m over de weg (het eerste wat dichterbij), liefst in een andere straat
+function pickJob(x, z, first) {
+  const d = new Map(); shortest(nearestNode(x, z), d, null);
+  const prev = GAME.job?.a, [lo, hi] = first ? [300, 900] : [400, 1400];
+  const ok = (a) => d.has(a.node) && a !== prev;
+  let cand = ADDRS.filter((a) => ok(a) && d.get(a.node) > lo && d.get(a.node) < hi);
+  if (cand.length < 3) cand = ADDRS.filter(ok);
+  const other = cand.filter((a) => a.street !== prev?.street); if (other.length >= 3) cand = other;
+  const a = cand[Math.floor(Math.random() * cand.length)];
+  return { a, m: d.get(a.node) };
+}
+function startJob(a) {
+  Object.assign(DEST, { addr: a.addr, gate: a.gate, post: a.post, node: a.node, label: a.label, num: a.num });
+  routeToDest(); destGroup.userData.place(); destGroup.visible = true;
+  currentRoute = routeFrom(state.x, state.z);
+  const m = currentRoute.dist;
+  // vast loon naar de afstand, plus fooi die wegloopt: wie er snel is krijgt alles
+  GAME.job = { a, base: 50 + Math.round(m / 50) * 5, tip: 100, tipT: m / 8 + 20, t: 0 };
+  $('navTo').textContent = a.label;
+}
+const reward = (j) => j.base + Math.round(j.tip * Math.max(0, 1 - j.t / j.tipT));
+function deliver() {
+  const j = GAME.job, pts = reward(j);
+  GAME.score += pts; GAME.delivered++;
+  beep([523, 659, 784], 0.22, 'triangle', 0.25); setTimeout(() => beep([1046], 0.35, 'triangle', 0.22), 230);
+  startJob(pickJob(state.x, state.z, false).a);
+  showToast(`Bezorgd! +${pts}`, `volgende adres: ${GAME.job.a.label}`, 2600);
 }
 
 // ------------------------------------------------------------------ minimap
@@ -1824,12 +2370,21 @@ function drawMinimap(x, z, heading) {
   mg.drawImage(mapCv, -(x - BX0) * MAP_PX, -(z - BZ0) * MAP_PX);
   mg.translate(-(x - BX0) * MAP_PX, -(z - BZ0) * MAP_PX);
   const tp = (px, pz) => [(px - BX0) * MAP_PX, (pz - BZ0) * MAP_PX];
-  if (currentRoute) {
+  if (currentRoute && GAME.job) {
     mg.strokeStyle = '#c8102e'; mg.lineWidth = 3.4 * MAP_PX; mg.lineJoin = 'round'; mg.lineCap = 'round'; mg.setLineDash([]);
     mg.beginPath(); currentRoute.path.forEach(([px, pz], i) => { const [a, b] = tp(px, pz); i ? mg.lineTo(a, b) : mg.moveTo(a, b); }); mg.stroke();
   }
-  const [gx, gz] = tp(DEST.gate[0], DEST.gate[1]);
-  mg.fillStyle = '#ffd36a'; mg.strokeStyle = '#15212c'; mg.lineWidth = 2; mg.beginPath(); mg.arc(gx, gz, 7, 0, Math.PI * 2); mg.fill(); mg.stroke();
+  if (GAME.job) {
+    const [gx, gz] = tp(DEST.gate[0], DEST.gate[1]);
+    mg.fillStyle = '#ffd36a'; mg.strokeStyle = '#15212c'; mg.lineWidth = 2; mg.beginPath(); mg.arc(gx, gz, 7, 0, Math.PI * 2); mg.fill(); mg.stroke();
+  }
+  const blink = Math.floor(performance.now() / 250) % 2;
+  for (const c of COPS.cars) {
+    if (c.mode === 'off') continue;
+    const [a, b] = tp(c.x, c.z);
+    mg.fillStyle = c.mode === 'chase' ? (blink ? '#ff3b3b' : '#3d6bff') : '#1f3d8c'; mg.strokeStyle = '#fff'; mg.lineWidth = 2;
+    mg.beginPath(); mg.arc(a, b, 5.5, 0, Math.PI * 2); mg.fill(); mg.stroke();
+  }
   mg.restore();
   // de Ape als pijltje
   mg.save(); mg.translate(S / 2, S * 0.6); mg.fillStyle = '#4f9a45'; mg.strokeStyle = '#fff'; mg.lineWidth = 3;
@@ -1987,7 +2542,7 @@ function honk() { beep(VEH.horn[0], 0.38, VEH.horn[1], 0.18); LIFE.honk(); }
 const state = {
   mode: 'intro', x: W.start.x, z: W.start.z, h: W.start.h, v: 0, steer: 0, roll: 0, tip: 0, tiltTime: 0, auto: false,
   susY: 0, susV: 0, pitch: 0, pitchV: 0, bumpRoll: 0, lastTarget: 0, lastThump: 0,
-  time: 0, cam: 0, lastSafe: null, eventT: 0, event: null, sinkY: 0, finished: false, wheelRot: 0, rpm: 0, gear: 1, y: 0,
+  time: 0, cam: 0, lastSafe: null, eventT: 0, event: null, sinkY: 0, finished: false, wheelRot: 0, rpm: 0, gear: 1, y: 0, limit: 30, copCam: 0,
 };
 const CAMS = ['achter', 'cabine', 'hoog'];
 function cycleCamera() { state.cam = (state.cam + 1) % CAMS.length; showToast('Camera: ' + CAMS[state.cam], '', 900); }
@@ -1997,8 +2552,11 @@ function showToast(title, sub = '', ms = 1800) {
   const t = $('toast'); t.innerHTML = ''; t.append(title); if (sub) { const s = document.createElement('small'); s.textContent = sub; t.append(s); }
   t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, ms);
 }
-function fmtTime(s) { const m = Math.floor(s / 60), r = s - m * 60; return `${m}:${r.toFixed(1).padStart(4, '0').replace('.', ',')}`; }
 function fmtKm(m) { return m >= 1000 ? (m / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(m / 10) * 10 + ' m'; }
+function fmtClock(s) { const t = Math.ceil(s), m = Math.floor(t / 60); return `${m}:${String(t - m * 60).padStart(2, '0')}`; }
+// tekst in de HUD alleen aanraken als hij verandert
+const shown = new Map();
+function setText(id, v) { if (shown.get(id) !== v) { shown.set(id, v); $(id).textContent = v; } }
 
 function respawn(msg) {
   // terug naar het dichtstbijzijnde stuk weg, met de neus richting de route
@@ -2022,11 +2580,23 @@ function autopilot() {
   const relTo = ([tx, tz]) => { let rel = Math.atan2(-(tx - state.x), -(tz - state.z)) - state.h; while (rel > Math.PI) rel -= Math.PI * 2; while (rel < -Math.PI) rel += Math.PI * 2; return rel; };
   const near = relTo(pointAhead(6 + Math.abs(state.v) * 0.6)), far = relTo(pointAhead(30));
   const left = Math.hypot(DEST.gate[0] - state.x, DEST.gate[1] - state.z);
-  const want = left < 25 ? 2 : Math.abs(far) > 0.45 ? 4.5 : 11.5;
+  const want = left < 25 ? 2 : Math.abs(far) > 0.45 ? 4.5 : state.autoWant || Math.min(11.5, state.limit / 3.6); // autoWant: om de politie te testen
   return { gas: state.v < want ? 1 : 0, brake: state.v > want + 1.5 ? 1 : 0, steerIn: Math.max(-1, Math.min(1, near * 2.2)) };
 }
 
 // ------------------------------------------------------------------ rijden
+// raakt een hoek van de wagen op (x, z, h) een gebouw, een boom of de leuning van de brug?
+function blocked(x, z, h, road) {
+  const c = Math.cos(h), s = Math.sin(h);
+  const nose = VEH.wb + VEH.front, corners = [[VEH.half, -nose + 0.05], [-VEH.half, -nose + 0.05], [VEH.half, VEH.rear], [-VEH.half, VEH.rear], [0, -nose]];
+  for (const [u, w] of corners) {
+    const px = x + u * c + w * s, pz = z - u * s + w * c;
+    if (road && road.r.b) { const r = road.r, sd = segDist(px, pz, r.pts[road.i][0], r.pts[road.i][1], r.pts[road.i + 1][0], r.pts[road.i + 1][1]); if (sd.t > 0.04 && sd.t < 0.96 && sd.d > r.w / 2 + 0.05) return true; }
+    for (const bi of buildGrid.near(px, pz)) if (pip(px, pz, BUILD_SHAPES[bi])) return true;
+    for (const ti of treeGrid.near(px, pz)) { const t = TREES[ti]; if (Math.hypot(t.x - px, t.z - pz) < 0.2 + t.h * 0.012) return true; }
+  }
+  return false;
+}
 function physics(dt) {
   let gas = keys.has('gas') ? 1 : 0, brake = keys.has('brake') ? 1 : 0;
   let steerIn = (keys.has('left') ? 1 : 0) - (keys.has('right') ? 1 : 0);
@@ -2076,19 +2646,9 @@ function physics(dt) {
   const nx = state.x + fx * state.v * dt, nz = state.z + fz * state.v * dt;
   // grens van de kaart
   if (nx < BX0 + 15 || nx > BX1 - 15 || nz < BZ0 + 15 || nz > BZ1 - 15) { state.v *= -0.2; showToast('Hier houdt de kaart op', 'draai om, Helenaveen is de andere kant op', 1600); return; }
-  // botsing met gebouwen en bomen: kijk naar de hoeken van de Ape
+  // botsing met gebouwen en bomen; zit je al klem (door een duw van de politie), dan mag je eruit rijden
   const c = Math.cos(nh), s = Math.sin(nh);
-  const nose = VEH.wb + VEH.front, corners = [[VEH.half, -nose + 0.05], [-VEH.half, -nose + 0.05], [VEH.half, VEH.rear], [-VEH.half, VEH.rear], [0, -nose]];
-  let hit = false;
-  for (const [u, w] of corners) {
-    const px = nx + u * c + w * s, pz = nz - u * s + w * c;
-    if (road && road.r.b) { const r = road.r, sd = segDist(px, pz, r.pts[road.i][0], r.pts[road.i][1], r.pts[road.i + 1][0], r.pts[road.i + 1][1]); if (sd.t > 0.04 && sd.t < 0.96 && sd.d > r.w / 2 + 0.05) { hit = true; break; } }
-    for (const bi of buildGrid.near(px, pz)) { if (pip(px, pz, BUILD_SHAPES[bi])) { hit = true; break; } }
-    if (hit) break;
-    for (const ti of treeGrid.near(px, pz)) { const t = TREES[ti]; if (Math.hypot(t.x - px, t.z - pz) < 0.2 + t.h * 0.012) { hit = true; break; } }
-    if (hit) break;
-  }
-  if (hit) { if (Math.abs(state.v) > 2) bonk(); state.v *= -0.25; state.hits = (state.hits || 0) + 1; return; }
+  if (blocked(nx, nz, nh, road) && !blocked(state.x, state.z, state.h, road)) { if (Math.abs(state.v) > 2) bonk(); state.v *= -0.25; state.hits = (state.hits || 0) + 1; return; }
   state.h = nh; state.x = nx; state.z = nz;
   // water: de voorkant of het midden in het water en niet op een weg of brug
   const midX = nx - s * VEH.wb * 0.45, midZ = nz - c * VEH.wb * 0.45;
@@ -2134,6 +2694,11 @@ function startEvent(kind, lat) {
 }
 function updateEvent(dt) {
   state.eventT += dt;
+  if (state.event === 'busted') {
+    state.v *= Math.pow(0.02, dt); state.x += -Math.sin(state.h) * state.v * dt; state.z += -Math.cos(state.h) * state.v * dt;
+    if (state.eventT > 3) { state.event = null; state.v = 0; COPS.release(performance.now()); }
+    return;
+  }
   if (state.event === 'splash') { state.sinkY = -Math.min(1.6, state.eventT * 1.5); $('tilt').hidden = true; state.roll = Math.sin(state.eventT * 3) * 0.1; state.v *= 0.9; state.x += -Math.sin(state.h) * state.v * dt; state.z += -Math.cos(state.h) * state.v * dt; }
   if (state.event === 'tip') { state.tip += (-state.tipDir * 1.32 - state.tip) * Math.min(1, dt * 6); state.v *= 0.9; state.x += -Math.sin(state.h) * state.v * dt; state.z += -Math.cos(state.h) * state.v * dt; }
   if (state.eventT > 2.0) {
@@ -2149,6 +2714,8 @@ function updateNav(dt) {
   const road = roadAt(state.x, state.z, 1.0);
   const name = road && road.r.name ? road.r.name : (road ? '' : '');
   if (name !== streetShown) { streetShown = name; $('streetName').textContent = name; $('street').dataset.empty = name ? '0' : '1'; }
+  if (road && road.r.d && road.r.v) state.limit = road.r.v;
+  if (!GAME.job) return; // rondrijden: geen adres
   currentRoute = routeFrom(state.x, state.z);
   const left = Math.max(0, currentRoute.dist);
   const direct = Math.hypot(DEST.gate[0] - state.x, DEST.gate[1] - state.z);
@@ -2160,15 +2727,16 @@ function updateNav(dt) {
   const want = Math.atan2(-(tx - state.x), -(tz - state.z));
   let rel = want - state.h; while (rel > Math.PI) rel -= Math.PI * 2; while (rel < -Math.PI) rel += Math.PI * 2;
   $('navArrow').style.transform = `rotate(${-rel}rad)`;
-  // korte aanwijzing in woorden
+  // korte aanwijzing in woorden, met de naam van de straat waar je in moet
   let hint = '';
-  if (direct < 40) hint = 'Daar is het paaltje met 42';
+  const ahead = roadAt(tx, tz, 1.0), next = ahead && ahead.r.d && ahead.r.name && ahead.r.name !== (road && road.r.name) ? ahead.r.name : '';
+  const into = (n) => n + (/(straat|pad|hof|plein|veldje|aak)$/.test(n) ? ' in' : ' op');
+  if (direct < 40) hint = COPS.wanted ? 'Eerst de politie kwijt' : `Daar is nummer ${DEST.num}`;
   else if (state.event) hint = '';
   else if (Math.abs(rel) > 2.2) hint = 'Keer om';
   else if (!road) hint = 'Terug naar de weg';
-  else if (road.r.name === 'Soemeersingel') hint = state.z > -250 ? 'Volg de Soemeersingel langs het kanaal' : 'Rechtsaf de brug over';
   else if (road.r.b) hint = 'Over de Helenavaart';
-  else if (road.r.name === 'Koolweg') hint = Math.abs(rel) < 0.6 ? 'Rechtdoor over de Koolweg' : (rel > 0 ? 'Linksaf de Koolweg op' : 'Rechtsaf de Koolweg op');
+  else if (next && Math.abs(rel) > 0.5) hint = (rel > 0 ? 'Linksaf de ' : 'Rechtsaf de ') + into(next);
   else hint = rel > 0.5 ? 'Ga linksaf' : rel < -0.5 ? 'Ga rechtsaf' : 'Rechtdoor';
   $('navHint').textContent = hint;
 }
@@ -2187,9 +2755,10 @@ function updateCamera(dt, instant) {
   } else if (state.cam === 2) { // hoog
     desired = new THREE.Vector3(state.x - fx * 14, y + 22, state.z - fz * 14);
     look = new THREE.Vector3(state.x + fx * 8, y, state.z + fz * 8);
-  } else { // achter
-    const back = VEH.chase[0] + Math.abs(state.v) * 0.1;
-    desired = new THREE.Vector3(state.x - fx * back, y + VEH.chase[1] + Math.abs(state.v) * 0.02, state.z - fz * back);
+  } else { // achter; rijdt de politie vlak achter je, dan hangt de camera net achter hun wagen zodat je allebei ziet
+    state.copCam += (COPS.behind - state.copCam) * Math.min(1, dt * 1.5);
+    const base = VEH.chase[0] + Math.abs(state.v) * 0.1, back = Math.max(base, Math.min(base + 5, state.copCam + 3));
+    desired = new THREE.Vector3(state.x - fx * back, y + VEH.chase[1] + Math.abs(state.v) * 0.02 + (back - base) * 0.3, state.z - fz * back);
     look = new THREE.Vector3(state.x + fx * 5, y + 0.8, state.z + fz * 5);
   }
   if (!camInit || instant || state.cam === 1) { camPos.copy(desired); camLook.copy(look); camInit = true; }
@@ -2201,7 +2770,6 @@ function updateCamera(dt, instant) {
 
 // ------------------------------------------------------------------ hoofdlus
 let last = performance.now();
-let best = null;
 // kwaliteit: zakt de beeldsnelheid, dan eerst minder pixels en daarna zachtere schaduwen uit
 let pixelRatio = Math.min(window.devicePixelRatio, MOBILE ? 1.5 : 2), perfAcc = 0, perfN = 0, perfLevel = 0, frameNo = 0;
 function adaptQuality(dt) {
@@ -2215,19 +2783,26 @@ function adaptQuality(dt) {
     renderer.setPixelRatio(pixelRatio); resize();
   }
 }
+// één stap spel: rijden, politie, de klok van de dienst en bezorgen
+function step(dt, now) {
+  if (state.mode === 'drive' || state.mode === 'roam') {
+    if (state.event) updateEvent(dt); else physics(dt);
+    COPS.update(dt, now);
+    if (state.mode === 'drive') { state.time += dt; if (GAME.job) GAME.job.t += dt; }
+    updateNav(dt);
+    // bij het adres stilgestaan? Met de politie achter je kun je niet bezorgen.
+    if (state.mode === 'drive' && GAME.job && !state.event && Math.hypot(DEST.gate[0] - state.x, DEST.gate[1] - state.z) < 6 && Math.abs(state.v) < 3.2) {
+      if (!COPS.wanted) deliver();
+      else if (now > GAME.warnT) { GAME.warnT = now + 3000; showToast('Eerst de politie kwijt!', 'met zwaailicht achter je kun je niet bezorgen', 1800); }
+    }
+    if (state.mode === 'drive' && state.time >= SHIFT) endShift();
+  }
+}
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   if (state.mode === 'drive' || state.mode === 'roam') adaptQuality((now - (frame.prev || now)) / 1000);
   frame.prev = now;
-  if (state.mode === 'drive' || state.mode === 'roam') {
-    if (state.event) updateEvent(dt); else physics(dt);
-    if (state.mode === 'drive' && !state.event) state.time += dt;
-    updateNav(dt);
-    // aangekomen?
-    if (state.mode === 'drive' && Math.hypot(DEST.gate[0] - state.x, DEST.gate[1] - state.z) < 6 && Math.abs(state.v) < 3.2) finish();
-  } else if (state.mode === 'intro') {
-    state.h += 0; // stilstaan met draaiende camera
-  }
+  step(dt, now);
   // Ape plaatsen
   ape.position.set(state.x, state.y + state.sinkY + state.susY + 0.03, state.z); ape.rotation.set(state.pitch, state.h, state.bumpRoll, 'YXZ');
   // kantelen om het buitenste achterwiel
@@ -2257,7 +2832,13 @@ function frame(now) {
   if (state.mode === 'drive' || state.mode === 'roam') {
     drawSpeedo(Math.abs(state.v) * 3.6, state.gear, state.rpm, keys.has('turbo'));
     if (!MOBILE || (frameNo++ & 1)) drawMinimap(state.x, state.z, state.h);
-    $('timer').textContent = fmtTime(state.time);
+    if (state.mode === 'drive') {
+      const left = Math.max(0, SHIFT - state.time);
+      setText('timer', fmtClock(left)); setText('score', fmtPts(GAME.score)); if (GAME.job) setText('navPay', '+' + reward(GAME.job));
+      $('shiftBox').classList.toggle('low', left < 15);
+      if (left < 10 && Math.ceil(left) !== GAME.tick) { GAME.tick = Math.ceil(left); beep([880], 0.07, 'square', 0.1); } // laatste tien tellen
+    }
+    setText('limitNum', String(state.limit)); $('limit').classList.toggle('over', Math.abs(state.v) * 3.6 > state.limit + 5);
     updateAudio(state.rpm, state.throttle || 0, true);
   }
   renderer.render(scene, camera);
@@ -2265,30 +2846,49 @@ function frame(now) {
 }
 
 // keuze van de wagen op de startkaart, onthouden per apparaat
+// beste dienst (punten) per wagen, onthouden per apparaat
 function loadBest() {
-  try { best = parseFloat(localStorage.getItem('ape-koolweg-best-' + VEH.id) || (VEH.id === 'ape' ? localStorage.getItem('ape-koolweg-best') : '')) || null; } catch (e) { best = null; }
+  try { GAME.best = parseInt(localStorage.getItem('ape-punten-best-' + VEH.id), 10) || null; } catch (e) { GAME.best = null; }
+}
+function showStartCard() {
+  const n = GAME.next;
+  $('firstAddr').textContent = n ? `Eerste adres: ${n.a.label}` : 'Eerste adres';
+  $('routeKm').textContent = n ? fmtKm(n.m) : '';
+  $('bestLine').textContent = GAME.best ? `Beste dienst met ${VEH.it}` : `Nog geen dienst gereden met ${VEH.it}`;
+  $('bestPts').textContent = GAME.best ? fmtPts(GAME.best) : '';
 }
 function chooseVehicle(id) {
   setVehicle(id);
   $('startTitle').innerHTML = VEH.title;
-  $('introText').textContent = `Je ${VEH.desc} staat voor Soemeersingel 25. Het adres ligt aan de overkant van de Helenavaart. Volg het kanaal naar het noorden, steek over en zet ${VEH.it} bij het paaltje van nummer 42. Pas op: de laanbomen hebben de singel en de Koolweg vol wortelbulten gedrukt.`;
+  $('introText').textContent = `Je ${VEH.desc} staat voor Soemeersingel 25. In een dienst van vijf minuten bezorg je zoveel mogelijk adressen in Helenaveen: elk adres levert punten op, en hoe sneller je er bent, hoe meer fooi. Rij je te hard en ziet de politie het, dan komen ze met zwaailicht achter je aan. Schud ze af voor je weer kunt bezorgen, want houden ze je aan, dan kost de bekeuring punten.`;
   $('kGas').textContent = VEH.gasText; $('kTurbo').textContent = VEH.turboText; $('kSteer').textContent = VEH.steerText;
   document.querySelectorAll('#pick button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.v === VEH.id)));
   try { localStorage.setItem('ape-koolweg-wagen', VEH.id); } catch (e) { /* geen opslag */ }
-  loadBest(); drawSpeedo(0, 1, 0, false);
+  loadBest(); showStartCard(); drawSpeedo(0, 1, 0, false);
 }
 document.querySelectorAll('#pick button').forEach((b) => b.addEventListener('click', () => { chooseVehicle(b.dataset.v); initAudio(); honk(); }));
 
-function finish() {
-  state.mode = 'done'; keys.clear(); updateAudio(0.15, 0, true);
+// een dienst begint bij Soemeersingel 25 (of waar je nu staat) met het eerste adres
+function startShift(atStart) {
+  if (atStart) Object.assign(state, { x: W.start.x, z: W.start.z, h: W.start.h, v: 0, steer: 0, roll: 0, tip: 0, tiltTime: 0, event: null, sinkY: 0, y: 0, lastSafe: null, susY: 0, susV: 0, pitch: 0, pitchV: 0 });
+  Object.assign(GAME, { score: 0, delivered: 0, fines: 0, tick: -1, job: null });
+  startJob((GAME.next || pickJob(state.x, state.z, true)).a); GAME.next = null;
+  state.time = 0; state.mode = 'drive'; camInit = false; last = performance.now(); navTimer = 0;
+  $('hud').hidden = false; $('hud').classList.remove('roam');
+  COPS.reset();
+}
+function endShift() {
+  state.mode = 'done'; keys.clear(); updateAudio(0.15, 0, true); COPS.stop(); $('tilt').hidden = true;
   beep([523, 659, 784], 0.25, 'triangle', 0.25); setTimeout(() => beep([1046], 0.4, 'triangle', 0.22), 260);
-  const t = state.time; let isBest = false;
-  if (!best || t < best) { best = t; isBest = true; try { localStorage.setItem('ape-koolweg-best-' + VEH.id, String(t)); } catch (e) {} }
-  $('endTime').textContent = fmtTime(t);
-  $('endText').textContent = `${VEH.endText} Je reed met ${VEH.it} van Soemeersingel 25 langs de Helenavaart naar Koolweg 42.`;
-  $('bestText').textContent = isBest ? `Nieuwe snelste tijd met ${VEH.it} op dit apparaat.` : `Snelste tijd met ${VEH.it} op dit apparaat: ${fmtTime(best)}`;
+  let isBest = false;
+  if (GAME.score > 0 && (!GAME.best || GAME.score > GAME.best)) { GAME.best = GAME.score; isBest = true; try { localStorage.setItem('ape-punten-best-' + VEH.id, String(GAME.score)); } catch (e) { /* geen opslag */ } }
+  const n = GAME.delivered, f = GAME.fines;
+  $('endScore').textContent = `${fmtPts(GAME.score)} ${GAME.score === 1 ? 'punt' : 'punten'}`;
+  $('endText').textContent = `${VEH.endText} Je bezorgde ${n === 0 ? 'geen enkel adres' : n === 1 ? 'één adres' : `${n} adressen`} met ${VEH.it}${f ? ` en kreeg ${f === 1 ? 'één bekeuring' : `${f} bekeuringen`}` : ', zonder bekeuring'}.`;
+  $('bestText').textContent = isBest ? `Nieuwe beste dienst met ${VEH.it} op dit apparaat.` : GAME.best ? `Beste dienst met ${VEH.it} op dit apparaat: ${fmtPts(GAME.best)} punten.` : '';
   $('endScreen').hidden = false; $('againBtn').focus();
 }
+function prepareNext() { GAME.job = null; GAME.next = pickJob(W.start.x, W.start.z, true); showStartCard(); }
 
 function resize() {
   const w = window.innerWidth, h = window.innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
@@ -2298,37 +2898,40 @@ addEventListener('resize', resize); resize();
 $('startBtn').addEventListener('click', () => {
   initAudio(); if (audio && audio.ctx.state === 'suspended') audio.ctx.resume();
   if (MOBILE) { try { document.documentElement.requestFullscreen?.().catch(() => {}); } catch (e) { /* niet beschikbaar */ } }
-  $('startScreen').hidden = true; $('hud').hidden = false; state.mode = 'drive'; state.time = 0; camInit = false; last = performance.now();
-  showToast('Soemeersingel 25', 'rij naar Koolweg 42', 1600);
+  $('startScreen').hidden = true; startShift(true);
+  showToast('Soemeersingel 25', `eerste adres: ${DEST.label}`, 2000);
   canvas.focus?.();
 });
 $('againBtn').addEventListener('click', () => {
-  Object.assign(state, { x: W.start.x, z: W.start.z, h: W.start.h, v: 0, steer: 0, roll: 0, tip: 0, tiltTime: 0, time: 0, event: null, sinkY: 0, y: 0, lastSafe: null, susY: 0, susV: 0, pitch: 0, pitchV: 0 });
-  $('endScreen').hidden = true; state.mode = 'drive'; camInit = false; last = performance.now();
+  $('endScreen').hidden = true; prepareNext(); startShift(true);
+  showToast('Nieuwe dienst', `eerste adres: ${DEST.label}`, 2000);
 });
-$('roamBtn').addEventListener('click', () => { $('endScreen').hidden = true; state.mode = 'roam'; last = performance.now(); });
-
-// route-afstand op de startkaart
-{ const r = routeFrom(W.start.x, W.start.z); $('routeKm').textContent = fmtKm(r.dist); }
+// na de dienst vrij rondrijden: geen adressen meer, de politie rijdt nog wel rond
+$('roamBtn').addEventListener('click', () => {
+  $('endScreen').hidden = true; state.mode = 'roam'; last = performance.now();
+  GAME.job = null; currentRoute = null; destGroup.visible = false; $('hud').classList.add('roam'); COPS.reset();
+});
 
 // bij een nieuwe versie van de pagina meteen verder rijden waar je was
 window.claude?.hot?.snapshot?.(() => ({ x: state.x, z: state.z, h: state.h, time: state.time, mode: state.mode, wagen: VEH.id }));
 const boot = (data) => {
   $('loading').hidden = true;
   let saved = data?.wagen; try { saved = saved || localStorage.getItem('ape-koolweg-wagen'); } catch (e) { /* geen opslag */ }
+  prepareNext();
   chooseVehicle(VEHICLES[saved] ? saved : 'ape');
   drawSpeedo(0, 1, 0);
   if (data && typeof data.x === 'number' && (data.mode === 'drive' || data.mode === 'roam')) {
-    Object.assign(state, { x: data.x, z: data.z, h: data.h, time: data.time || 0, mode: data.mode });
-    $('hud').hidden = false;
+    Object.assign(state, { x: data.x, z: data.z, h: data.h }); startShift(false);
   } else if (location.hash === '#demo') {
-    Object.assign(state, { mode: 'drive', auto: true }); $('hud').hidden = false;
+    startShift(true); state.auto = true;
   } else $('startScreen').hidden = false;
   requestAnimationFrame(frame);
 };
 window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
-window.__ape = { state, keys, routeFrom, DEST, camera, THREE, scene, bumpHeight, BUMPS, LIFE, get aerialLoaded() { return aerialLoaded; }, get frames() { return renderer.info.render.frame; },
+window.__ape = { state, keys, routeFrom, DEST, camera, THREE, scene, bumpHeight, BUMPS, LIFE, COPS, GAME, ADDRS, NODES, startShift, endShift, deliver, pickJob, startJob, get aerialLoaded() { return aerialLoaded; }, get frames() { return renderer.info.render.frame; },
   sim(seconds, dt = 1 / 60) { let maxSus = 0, thumps = 0, events = []; const t0 = state.lastThump;
     for (let t = 0; t < seconds; t += dt) { if (state.event) { updateEvent(dt); if (!events.includes(state.event)) events.push(state.event); } else physics(dt); updateNav(dt); maxSus = Math.max(maxSus, Math.abs(state.susY)); if (state.lastThump !== t0) thumps++; }
-    return { x: +state.x.toFixed(1), z: +state.z.toFixed(1), v: +(state.v * 3.6).toFixed(1), maxSus: +maxSus.toFixed(3), events, street: streetShown }; } };
+    return { x: +state.x.toFixed(1), z: +state.z.toFixed(1), v: +(state.v * 3.6).toFixed(1), maxSus: +maxSus.toFixed(3), events, street: streetShown }; },
+  // hele spelstappen met een eigen klok (voor tests zonder beeld); each(t) mag sturen
+  run(seconds, each, dt = 1 / 30) { let t = this.t || performance.now(); for (let k = 0; k < seconds / dt; k++) { t += dt * 1000; each?.(t); step(dt, t); LIFE.update(dt, t); if (state.mode === 'done') break; } this.t = t; return t; } };
 </script>

@@ -1,17 +1,25 @@
-# Met de Ape naar Koolweg 42
+# Met de Ape door Helenaveen
 
-Een 3D-spelletje in de browser: je rijdt van Soemeersingel 25 in Helenaveen naar Koolweg 42, langs de Helenavaart, over de houten fietsbrug en de betonnen brug bij Kamp Mariaveen, en over de wortelbulten van de laanbomen.
+Een 3D-spelletje in de browser: vanaf Soemeersingel 25 in Helenaveen bezorg je in vijf minuten zoveel mogelijk adressen, langs de Helenavaart, over de houten fietsbrug en de betonnen brug bij Kamp Mariaveen, en over de wortelbulten van de laanbomen. Rij je te hard waar de politie het ziet, dan komen ze achter je aan.
 
 Spelen: https://jankeesvw.github.io/ape-helenaveen/
 
 ## Wagens
 
-Op de startkaart kies je je wagen; de snelste tijd wordt per wagen bijgehouden.
+Op de startkaart kies je je wagen; de beste dienst wordt per wagen bijgehouden.
 
 - **Piaggio Ape**, groen, met een laadbak vol kool. Haalt 45 km/u, opgevoerd 70, en kantelt als je hem op snelheid op vol stuur neemt.
 - **Fiat 500** (de oude), rood, met het linnen schuifdak. 85 km/u, plankgas 95.
 - **Volkswagen Kever** (de oude), rood, met losse spatborden en treeplanken. 100 km/u, plankgas 120.
 - **Volkswagen T2-busje**, Samtgrün met een wit dak. 95 km/u, plankgas 110, en helt flink over in de bocht.
+
+## Bezorgen
+
+Een dienst duurt vijf minuten. Je krijgt steeds een willekeurig adres in het dorp, een van de bijna vierhonderd echte adressen uit de BAG; het paaltje met het huisnummer staat aan de stoep en een lichtbaken wijst het van ver aan. Sta je er stil, dan is het bezorgd en krijg je meteen het volgende adres. Elk adres levert punten op naar de afstand, plus fooi die wegloopt naarmate je er langer over doet.
+
+## Politie
+
+Er rijden steeds twee witte politiewagens rond. Overal geldt de echte maximumsnelheid uit OpenStreetMap (veel 30 in het dorp, 60 erbuiten), die zie je naast je teller. Rij je meer dan 5 km/u te hard en ziet een politiewagen het, dan gaan zwaailicht en sirene aan en komen ze achter je aan, zoals in GTA. Hoe langer de achtervolging duurt, hoe meer sterren en hoe meer wagens; een politiewagen rammen helpt ook niet. Zolang ze achter je aan zitten kun je niet bezorgen. Blijf lang genoeg uit hun zicht (achter de huizen, of gewoon verder weg) en ze geven het op, wat je wat punten oplevert. Val je stil met een politiewagen tegen je aan, dan ben je aangehouden en kost de bekeuring 100 punten per ster.
 
 ## Onderweg
 

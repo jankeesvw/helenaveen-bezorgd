@@ -18,10 +18,10 @@ DEST_LATLON = (51.4054350, 5.9108390)  # Koolweg 42
 # linkpreview (Telegram, WhatsApp, Slack) voor de GitHub Pages-versie
 SITE_URL = 'https://jankeesvw.github.io/ape-helenaveen/'
 SOCIAL_META = (
-    '<meta name="description" content="Rij met een groene Piaggio Ape van de Soemeersingel naar Koolweg 42 in Helenaveen, over de wortelbulten en langs de Helenavaart.">\n'
+    '<meta name="description" content="Bezorg met een groene Piaggio Ape zoveel mogelijk adressen in Helenaveen, over de wortelbulten en langs de Helenavaart, en laat je niet pakken door de politie.">\n'
     '<meta property="og:type" content="website">\n'
-    '<meta property="og:title" content="Met de Ape naar Koolweg 42">\n'
-    '<meta property="og:description" content="Een 3D-ritje door Helenaveen op echte kaartdata: de Soemeersingel, de Helenavaart en de wortelbulten.">\n'
+    '<meta property="og:title" content="Met de Ape door Helenaveen">\n'
+    '<meta property="og:description" content="Bezorgen in 3D op echte kaartdata: vijf minuten, zoveel mogelijk adressen, en rij je te hard dan komt de politie achter je aan.">\n'
     f'<meta property="og:url" content="{SITE_URL}">\n'
     f'<meta property="og:image" content="{SITE_URL}social.jpg">\n'
     '<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">\n'
@@ -39,6 +39,8 @@ ROAD_W = {
 }
 ROAD_KIND = {k: i for i, k in enumerate(ROAD_W)}
 DRIVABLE = {'tertiary', 'secondary', 'unclassified', 'residential', 'living_street', 'service', 'track'}
+# maximumsnelheid als OSM er geen maxspeed bij heeft
+DEFAULT_LIMIT = {'tertiary': 50, 'secondary': 80, 'unclassified': 60, 'residential': 30, 'living_street': 30, 'service': 30, 'track': 60}
 
 LAND_KIND = {'forest': 0, 'wood': 0, 'grass': 1, 'meadow': 1, 'farmland': 2, 'orchard': 3,
              'heath': 4, 'wetland': 5, 'scrub': 6, 'cemetery': 7, 'residential': 8,
@@ -272,6 +274,9 @@ def main():
              'd': 1 if hw in DRIVABLE else 0}
         if surf == 'wood':
             r['wd'] = 1
+        if hw in DRIVABLE:
+            ms = t.get('maxspeed', '').strip()
+            r['v'] = int(ms) if ms.isdigit() else DEFAULT_LIMIT[hw]
         roads.append(r)
         ri = len(roads) - 1
         for i in range(len(pts) - 1):
@@ -366,8 +371,7 @@ def main():
     dest_building = next((i for i, b in enumerate(buildings) if 'Koolweg 42' in b['a']), None)
     start_fp = next(bld_shapes[i] for i, b in enumerate(buildings) if START_ADDRESS in b['a'])
     start_hint = (sum(p[0] for p in start_fp) / len(start_fp), sum(p[1] for p in start_fp) / len(start_fp))
-    for b in buildings:
-        del b['a']
+    addr_lists = [b.pop('a') for b in buildings]
 
     def in_building(x, z, margin=0):
         for bi in bld_grid.near(x, z):
@@ -533,6 +537,48 @@ def main():
     vl = math.hypot(vx, vz) or 1
     post = (gx + vx / vl * (roads[gri]['w'] / 2 + 1.8), gz + vz / vl * (roads[gri]['w'] / 2 + 1.8))
 
+    # ---------- bezorgadressen: elk adres van een woning of bedrijf, met de plek op de weg ervoor ----------
+    def nearest_any(x, z):
+        best = None
+        for ri, r in enumerate(roads):
+            if not r['d'] or r['b']:
+                continue
+            pts = road_pts(r)
+            for i in range(len(pts) - 1):
+                d, cx, cz, tt = seg_dist(x, z, *pts[i], *pts[i + 1])
+                if best is None or d < best[0]:
+                    best = (d, cx, cz, ri, i, tt)
+        return best
+
+    addrs, seen = [], set()
+    for bi, alist in enumerate(addr_lists):
+        if not alist or buildings[bi]['k'] not in (0, 1):
+            continue
+        fp = bld_shapes[bi]
+        cx, cz = sum(p[0] for p in fp) / len(fp), sum(p[1] for p in fp) / len(fp)
+        for label in sorted(set(alist)):
+            if label in seen:
+                continue
+            street = label.rsplit(' ', 1)[0]
+            g = nearest_on(street, cx, cz) if street in name_idx else None
+            if g is None or g[0] > 70 or roads[g[3]]['b']:
+                g = nearest_any(cx, cz)
+                if g is None or g[0] > 50:
+                    continue
+            d, ax, az, ri, i, tt = g
+            node = roads[ri]['n'][i if tt < 0.5 else i + 1]
+            if node not in dist:  # niet bereikbaar over de weg
+                continue
+            ux, uz = cx - ax, cz - az
+            ul = math.hypot(ux, uz) or 1
+            off = min(roads[ri]['w'] / 2 + 1.8, ul * 0.6)
+            px, pz = ax + ux / ul * off, az + uz / ul * off
+            if in_building(px, pz):
+                off = roads[ri]['w'] / 2 + 0.7
+                px, pz = ax + ux / ul * off, az + uz / ul * off
+            seen.add(label)
+            addrs.append([label, dm(ax), dm(az), dm(px), dm(pz), node, dm(cx), dm(cz)])
+
     world = {
         'bounds': [dm(v) for v in BOUNDS],
         'nodes': flat(nodes),
@@ -547,6 +593,7 @@ def main():
         'start': start,
         'dest': {'addr': [dm(dest[0]), dm(dest[1])], 'gate': [dm(gx), dm(gz)], 'post': [dm(post[0]), dm(post[1])],
                  'node': gate_node, 'building': dest_building},
+        'addrs': addrs,
     }
     world['aerial'] = aerial_tiles(proj)
     js = json.dumps(world, separators=(',', ':'))
@@ -566,7 +613,7 @@ def main():
     (ROOT / 'index.html').write_text(head + page + '\n</body>\n</html>\n')
     print(f"wegen {len(roads)}, knopen {len(nodes)}, water {len(water_polys)}+{len(waterways)}, gebouwen {len(buildings)}, "
           f"land {len(lands)}, bomen {len(trees)}, wereld {len(js)//1024} KB, "
-          f"start {start}, poort ({gx:.0f},{gz:.0f}), doelgebouw {dest_building}")
+          f"start {start}, poort ({gx:.0f},{gz:.0f}), doelgebouw {dest_building}, adressen {len(addrs)}")
 
 
 if __name__ == '__main__':
