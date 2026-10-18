@@ -18,5 +18,5 @@ Q="[out:json][timeout:60];
   way[\"addr:street\"=\"Koolweg\"]($BBOX);
 );
 out body geom;"
-curl -sf -A "tour-helenaveen/1.0" --data-urlencode "data=$Q" https://overpass-api.de/api/interpreter -o data/osm.json
+curl -sf -A "helenaveen-bezorgd/1.0" --data-urlencode "data=$Q" https://overpass-api.de/api/interpreter -o data/osm.json
 echo "data/osm.json: $(jq '.elements | length' data/osm.json) elementen"

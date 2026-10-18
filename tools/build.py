@@ -16,7 +16,7 @@ BOUNDS = (-1000.0, -1500.0, 1100.0, 1550.0)  # minx, minz, maxx, maxz
 DEST_LATLON = (51.4054350, 5.9108390)  # Koolweg 42
 
 # linkpreview (Telegram, WhatsApp, Slack) voor de GitHub Pages-versie
-SITE_URL = 'https://jankeesvw.github.io/tour-helenaveen/'
+SITE_URL = 'https://jankeesvw.github.io/helenaveen-bezorgd/'
 SOCIAL_META = (
     '<meta name="description" content="Bezorg met een groene Piaggio Ape zoveel mogelijk adressen in Helenaveen, over de wortelbulten en langs de Helenavaart, en laat je niet pakken door de politie.">\n'
     '<meta property="og:type" content="website">\n'

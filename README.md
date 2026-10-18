@@ -2,7 +2,7 @@
 
 Een 3D-spelletje in de browser: vanaf Soemeersingel 25 in Helenaveen bezorg je in vijf minuten zoveel mogelijk adressen, langs de Helenavaart, over de houten fietsbrug en de betonnen brug bij Kamp Mariaveen, en over de wortelbulten van de laanbomen. Rij je te hard waar de politie het ziet, dan komen ze achter je aan.
 
-Spelen: https://jankeesvw.github.io/tour-helenaveen/
+Spelen: https://jankeesvw.github.io/helenaveen-bezorgd/
 
 ## Wagens
 
