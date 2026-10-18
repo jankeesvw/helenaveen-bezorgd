@@ -13,9 +13,13 @@ Op de startkaart kies je je wagen; de snelste tijd wordt per wagen bijgehouden.
 - **Volkswagen Kever** (de oude), rood, met losse spatborden en treeplanken. 100 km/u, plankgas 120.
 - **Volkswagen T2-busje**, Samtgrün met een wit dak. 95 km/u, plankgas 110, en helt flink over in de bocht.
 
+## Onderweg
+
+Af en toe staat er een bewoner in de voortuin die je nazwaait, of loopt er iemand langs de weg. Bij de voordeuren zitten katten; die rennen weg als je te dichtbij komt, en soms schiet er een vlak voor je de weg over. Op het kanaal zwemmen zwanen, sommige met grijze jongen erachteraan. Toeter je, dan zwaaien de mensen terug, schieten de katten weg en sissen de zwanen.
+
 ## Besturing
 
-Pijltjes of WASD om te rijden, Shift voor opgevoerd (tot 70 km/u), spatie om te remmen, H om te toeteren, C voor een andere camera en R om terug op de weg te komen. Op een telefoon stuur je met je duim over het stuurvlak links en zitten gas en rem rechts.
+Pijltjes of WASD om te rijden, Shift voor opgevoerd (tot 70 km/u), spatie om te remmen (blijf je erop staan, dan rij je achteruit), H om te toeteren, C voor een andere camera en R om terug op de weg te komen. Op een telefoon stuur je met je duim over het stuurvlak links en zitten gas en rem rechts.
 
 ## Hoe het gemaakt is
 

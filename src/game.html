@@ -1294,10 +1294,16 @@ function buildBus(V) {
   };
   const p = new THREE.Shape(); p.moveTo(0.08, cy); outline(p, true); p.quadraticCurveTo(L, cy, L - 0.15, cy);
   p.lineTo(rw + R, cy); p.absarc(rw, cy, R, 0, Math.PI, false); p.lineTo(fw + R, cy); p.absarc(fw, cy, R, 0, Math.PI, false); p.lineTo(0.08, cy);
-  add(shell, profileBody(p, 1.74, NOSE, 0.07), green, 0, 0, 0);
-  // wit bovendeel vanaf de raamlijn
-  const u = new THREE.Shape(); u.moveTo(0.054, 1.12); u.lineTo(0.22, 1.72); u.quadraticCurveTo(0.3, 1.94, 0.6, 1.95); u.lineTo(L - 0.35, 1.95); u.quadraticCurveTo(L - 0.02, 1.94, L, 1.7); u.lineTo(L, 1.12); u.lineTo(0.054, 1.12);
-  add(shell, profileBody(u, 1.77, NOSE, 0.07), white, 0, 0, 0);
+  // één carrosserie in twee kleuren: boven de raamlijn wit, eronder groen (geen tweede schil, dan schemert er niets door)
+  const twoTone = lak('#6e8f7a');
+  twoTone.onBeforeCompile = (sh) => {
+    sh.uniforms.upperCol = { value: new THREE.Color('#f1efe6') };
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vBodyY;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvBodyY = position.y;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vBodyY;\nuniform vec3 upperCol;')
+      .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, upperCol, step(1.12, vBodyY));');
+  };
+  twoTone.customProgramCacheKey = () => 'tweekleur';
+  add(shell, profileBody(p, 1.74, NOSE, 0.07), twoTone, 0, 0, 0);
   // wit V-vlak op de neus en het grote VW-logo
   const vCv = document.createElement('canvas'); vCv.width = vCv.height = 128; { const g = vCv.getContext('2d'); g.fillStyle = '#f1efe6'; g.beginPath(); g.arc(64, 64, 60, 0, Math.PI * 2); g.fill(); g.strokeStyle = '#6e8f7a'; g.lineWidth = 9; g.beginPath(); g.arc(64, 64, 46, 0, Math.PI * 2); g.stroke(); g.lineWidth = 8; g.lineJoin = 'round'; g.beginPath(); g.moveTo(34, 38); g.lineTo(54, 86); g.lineTo(64, 60); g.lineTo(74, 86); g.lineTo(94, 38); g.stroke(); g.beginPath(); g.moveTo(46, 40); g.lineTo(64, 74); g.lineTo(82, 40); g.stroke(); }
   const vwTex = new THREE.CanvasTexture(vCv); vwTex.colorSpace = THREE.SRGBColorSpace;
@@ -1316,7 +1322,7 @@ function buildBus(V) {
   // ruiten: gedeelde voorruit, rij zijruiten, achterruit
   slopedGlass(shell, [0.06, 1.16], [0.21, 1.68], 1.48, NOSE, 0.085);
   add(shell, new THREE.BoxGeometry(0.05, 0.56, 0.04), white, 0, 1.43, NOSE + 0.07);
-  for (const [a, b] of [[0.42, 1.2], [1.35, 2.25], [2.38, 3.3], [3.42, 4.15]]) sideGlass(shell, [[a, 1.22], [a, 1.72], [b, 1.72], [b, 1.22]], 0.885, NOSE);
+  for (const [a, b] of [[0.42, 1.2], [1.35, 2.25], [2.38, 3.3], [3.42, 4.15]]) sideGlass(shell, [[a, 1.22], [a, 1.72], [b, 1.72], [b, 1.22]], 0.875, NOSE);
   add(shell, new THREE.PlaneGeometry(1.3, 0.42), MAT.glass, 0, 1.47, NOSE + L + 0.085);
   add(shell, new THREE.BoxGeometry(0.012, 0.95, 0.012), MAT.black, 0.874, 0.75, NOSE + 1.3);   // schuifdeur
   add(shell, new THREE.BoxGeometry(0.012, 0.95, 0.012), MAT.black, 0.874, 0.75, NOSE + 2.3);
@@ -1330,25 +1336,25 @@ function buildBus(V) {
 
 const VEHICLES = {
   ape: { id: 'ape', name: 'Ape', it: 'de Ape', title: 'Met de <em>Ape</em> naar Koolweg 42', desc: 'groene Piaggio Ape', build: buildApe,
-    wb: 1.7, track: 1.12, wheelR: 0.245, front: 0.25, rear: 0.66, half: 0.66, three: true, rev: 9,
+    wb: 1.7, track: 1.12, wheelR: 0.245, front: 0.25, rear: 0.66, half: 0.66, three: true, rev: 22,
     vmax: 45, vturbo: 70, acc: 2.6, accT: 3.4, tip: { a0: 5.0, a1: 0.25, lift: 6.3, tip: 7.0 }, lean: 0.055,
     gears: [16, 31, 45], dial: 80, eye: [0, 1.44, -1.0], chase: [5.4, 2.1], orbit: 7, sound: { base: 38, span: 120, lp: 500, type: 'sawtooth' }, horn: [[415, 520], 'square'],
     turboLabel: 'OPGEVOERD', gasText: 'gas geven (de Ape haalt 45 km/u)', turboText: 'opgevoerd: tot 70 km/u', steerText: 'sturen; scherp sturen op snelheid kantelt hem',
     tipText: 'een Ape neem je niet op vol stuur', endText: 'De kool staat bij de deur.' },
   fiat: { id: 'fiat', name: 'Fiat 500', it: 'de Fiat', title: 'Met de <em>Fiat 500</em> naar Koolweg 42', desc: 'rode Fiat 500', build: buildFiat,
-    wb: 1.84, track: 1.12, wheelR: 0.27, tyreW: 0.13, front: 0.56, rear: 0.57, half: 0.67, rev: 18,
+    wb: 1.84, track: 1.12, wheelR: 0.27, tyreW: 0.13, front: 0.56, rear: 0.57, half: 0.67, rev: 32,
     vmax: 85, vturbo: 95, acc: 2.3, accT: 2.7, grip: 7.8, lean: 0.04,
     gears: [25, 45, 65, 95], dial: 120, eye: [-0.3, 1.13, -1.28], chase: [5.8, 2.0], orbit: 7, sound: { base: 30, span: 88, lp: 420, type: 'square' }, horn: [[520, 620], 'square'],
     turboLabel: 'PLANKGAS', gasText: 'gas geven (de Fiat haalt 85 km/u)', turboText: 'plankgas: tot 95 km/u', steerText: 'sturen',
     endText: 'Het linnen dak mag open.' },
   kever: { id: 'kever', name: 'Kever', it: 'de Kever', title: 'Met de <em>Kever</em> naar Koolweg 42', desc: 'rode Volkswagen Kever', build: buildKever,
-    wb: 2.4, track: 1.32, wheelR: 0.31, tyreW: 0.16, front: 0.86, rear: 0.82, half: 0.8, rev: 20,
+    wb: 2.4, track: 1.32, wheelR: 0.31, tyreW: 0.16, front: 0.86, rear: 0.82, half: 0.8, rev: 35,
     vmax: 100, vturbo: 120, acc: 2.7, accT: 3.2, grip: 8.2, lean: 0.05,
     gears: [30, 55, 85, 120], dial: 140, eye: [-0.33, 1.24, -1.62], chase: [6.4, 2.2], orbit: 8, sound: { base: 24, span: 76, lp: 360, type: 'sawtooth' }, horn: [[440, 554], 'sawtooth'],
     turboLabel: 'PLANKGAS', gasText: 'gas geven (de Kever haalt 100 km/u)', turboText: 'plankgas: tot 120 km/u', steerText: 'sturen',
     endText: 'De boxermotor tikt nog even na.' },
   bus: { id: 'bus', name: 'VW-busje', it: 'het busje', title: 'Met het <em>VW-busje</em> naar Koolweg 42', desc: 'Samtgrüne Volkswagen T2', build: buildBus,
-    wb: 2.4, track: 1.4, wheelR: 0.33, tyreW: 0.19, front: 0.75, rear: 1.36, half: 0.9, rev: 18,
+    wb: 2.4, track: 1.4, wheelR: 0.33, tyreW: 0.19, front: 0.75, rear: 1.36, half: 0.9, rev: 30,
     vmax: 95, vturbo: 110, acc: 2.0, accT: 2.4, tip: { a0: 6.0, a1: 0.12, lift: 7.4, tip: 8.4 }, lean: 0.08,
     gears: [25, 50, 75, 110], dial: 140, eye: [-0.42, 1.78, -2.45], chase: [7.4, 2.9], orbit: 9, sound: { base: 22, span: 70, lp: 340, type: 'sawtooth' }, horn: [[330, 415], 'sawtooth'],
     turboLabel: 'PLANKGAS', gasText: 'gas geven (het busje haalt 95 km/u)', turboText: 'plankgas: tot 110 km/u', steerText: 'sturen; een vol busje helt flink over in de bocht',
@@ -1363,6 +1369,381 @@ function setVehicle(id) {
   wheels = parts.wheels; steerParts = parts.steer; driver = parts.driver; cockpit = parts.cockpit;
   ape.traverse((o) => { if (o.isMesh && o.material !== MAT.glass) { o.castShadow = true; o.receiveShadow = true; } });
 }
+
+// ------------------------------------------------------------------ leven: mensen, katten en zwanen
+// Vaste plekken uit de kaart: bewoners in de voortuin, wandelaars langs de weg, katten bij de voordeur en
+// zwanen op het kanaal. Alleen wat dichtbij is krijgt een poppetje uit een kleine pool.
+const LIFE = (() => {
+  let seed = 4242; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const pick = (a) => a[Math.floor(rnd() * a.length)];
+  const inBuilding = (x, z) => buildGrid.near(x, z).some((bi) => pip(x, z, BUILD_SHAPES[bi]));
+  const nearTrunk = (x, z, m) => treeGrid.near(x, z).some((ti) => Math.hypot(TREES[ti].x - x, TREES[ti].z - z) < m);
+  const free = (x, z) => !inWater(x, z) && !inBuilding(x, z) && !roadAt(x, z, 0.4) && !nearTrunk(x, z, 0.7);
+  const turn = (cur, tgt, k) => { const d = Math.atan2(Math.sin(tgt - cur), Math.cos(tgt - cur)); return cur + d * Math.min(1, k); };
+  function nearestRoad(x, z, maxD) {
+    let best = null; const c = roadGrid.cell, n = Math.ceil(maxD / c), seen = new Set();
+    for (let gx = -n; gx <= n; gx++) for (let gz = -n; gz <= n; gz++) for (const [ri, i] of roadGrid.near(x + gx * c, z + gz * c)) {
+      const key = ri * 10000 + i; if (seen.has(key)) continue; seen.add(key);
+      const r = ROADS[ri]; if (!r.d || r.b) continue;
+      const s = segDist(x, z, r.pts[i][0], r.pts[i][1], r.pts[i + 1][0], r.pts[i + 1][1]);
+      if (s.d < maxD && (!best || s.d < best.d)) best = { r, i, ...s };
+    }
+    return best;
+  }
+  const roadCum = (r) => { if (!r.cum) { r.cum = [0]; for (let i = 1; i < r.pts.length; i++) r.cum.push(r.cum[i - 1] + Math.hypot(r.pts[i][0] - r.pts[i - 1][0], r.pts[i][1] - r.pts[i - 1][1])); } return r.cum; };
+  // punt op afstand s langs de weg, off meter naar links
+  function along(r, s, off) {
+    const c = roadCum(r); let i = 0; while (i < c.length - 2 && c[i + 1] < s) i++;
+    const [ax, az] = r.pts[i], [bx, bz] = r.pts[i + 1], L = c[i + 1] - c[i] || 1, t = Math.max(0, Math.min(1, (s - c[i]) / L)), tx = (bx - ax) / L, tz = (bz - az) / L;
+    return [ax + (bx - ax) * t + tz * off, az + (bz - az) * t - tx * off, tx, tz];
+  }
+  const polyArea = WATER.map((w) => { let a = 0; for (let i = 0; i < w.o.length; i++) { const p = w.o[i], q = w.o[(i + 1) % w.o.length]; a += p[0] * q[1] - q[0] * p[1]; } return Math.abs(a / 2); });
+  // hoogte van de waterspiegel, zoals de watersectie hem tekent
+  function waterLevel(x, z) {
+    let lvl = null;
+    for (const it of waterGrid.near(x, z)) {
+      if (it[0] === 'p') { const w = WATER[it[1]]; if (pip(x, z, w.o) && !w.h.some((h) => pip(x, z, h))) return polyArea[it[1]] > 150 ? -1.0 : -0.7; }
+      else { const w = WATERWAYS[it[1]], [ax, az] = w.p[it[2]], [bx, bz] = w.p[it[2] + 1]; if (segDist(x, z, ax, az, bx, bz).d < w.w / 2) lvl = Math.min(lvl ?? 0, w.w >= 5 ? -1.0 : w.w >= 2.5 ? -0.7 : -0.45); }
+    }
+    return lvl;
+  }
+
+  // ---- onderdelen met een kleurvak per hoekpunt, zodat elk poppetje zijn eigen kleren krijgt met één materiaal
+  const slotted = (geo, slot, x = 0, y = 0, z = 0) => {
+    const g = geo.index ? geo.toNonIndexed() : geo; g.translate(x, y, z); g.deleteAttribute('uv');
+    g.setAttribute('slot', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count).fill(slot), 1)); return g;
+  };
+  const withColor = (g) => { g.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 3), 3)); return g; };
+  const paint = (g, cols) => { const s = g.attributes.slot.array, c = g.attributes.color; for (let i = 0; i < s.length; i++) { const k = cols[s[i]]; c.setXYZ(i, k.r, k.g, k.b); } c.needsUpdate = true; };
+  const lifeMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, envMapIntensity: 0.5 });
+  const C = (hex) => new THREE.Color(hex);
+
+  // mens, rijrichting -z, 1,75 m. Vakken: 0 shirt, 1 huid, 2 broek, 3 haar, 4 schoenen, 5 pet
+  const PG = (() => {
+    const torso = new THREE.CapsuleGeometry(0.16, 0.34, 4, 10); torso.scale(1, 1, 0.68);
+    const hips = new THREE.CylinderGeometry(0.155, 0.15, 0.2, 10); hips.scale(1, 1, 0.68);
+    const head = new THREE.SphereGeometry(0.105, 14, 10); head.scale(0.95, 1.1, 1);
+    const base = [slotted(torso, 0, 0, 1.22, 0), slotted(hips, 2, 0, 0.93, 0), slotted(new THREE.CylinderGeometry(0.048, 0.055, 0.1, 8), 1, 0, 1.58, 0), slotted(head, 1, 0, 1.69, 0), slotted(new THREE.SphereGeometry(0.022, 6, 4), 1, 0, 1.68, -0.108)];
+    const hairTop = () => { const h = new THREE.SphereGeometry(0.114, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.55); h.rotateX(0.45); return slotted(h, 3, 0, 1.705, 0.008); };
+    const longHair = () => { const b = new THREE.CapsuleGeometry(0.09, 0.16, 4, 8); b.scale(1.1, 1, 0.55); return slotted(b, 3, 0, 1.6, 0.065); };
+    const cap = () => [slotted(new THREE.CylinderGeometry(0.112, 0.118, 0.07, 14), 5, 0, 1.79, 0), slotted(new THREE.BoxGeometry(0.19, 0.014, 0.1), 5, 0, 1.765, -0.12)];
+    return {
+      body: [mergeGeometries([...base, hairTop()]), mergeGeometries([...base, hairTop(), longHair()]), mergeGeometries([...base, hairTop(), ...cap()])],
+      leg: mergeGeometries([slotted(new THREE.CapsuleGeometry(0.068, 0.66, 4, 8), 2, 0, -0.43, 0), slotted(new THREE.BoxGeometry(0.1, 0.07, 0.22), 4, 0, -0.865, -0.04)]),
+      arm: mergeGeometries([slotted(new THREE.CapsuleGeometry(0.048, 0.5, 4, 8), 0, 0, -0.29, 0), slotted(new THREE.SphereGeometry(0.048, 8, 6), 1, 0, -0.6, 0)]),
+    };
+  })();
+  const SKIN = ['#f1c7a5', '#e6b590', '#d39c74', '#a86c47', '#6e4429'];
+  const SHIRT = ['#2f5d8a', '#b8342c', '#e7e3d6', '#3e6b3a', '#e8a92a', '#6b4f8a', '#26323d', '#d9772b', '#8fb3c9', '#7a1f2b', '#c9c2b0', '#2d6f6a'];
+  const PANTS = ['#2b3a55', '#3b3b3b', '#5a4a3a', '#7b6f5a', '#1f2a3a', '#4a5a6a', '#6b5a44'];
+  const HAIR = ['#2a1d14', '#4a3020', '#7a5230', '#c9a15a', '#151515', '#8a3b1c'];
+  function personLook() {
+    const old = rnd() < 0.28, kid = !old && rnd() < 0.14;
+    const hair = old ? pick(['#9a9a96', '#d8d6d0', '#bdbbb5']) : pick(HAIR);
+    const style = old ? (rnd() < 0.45 ? 2 : 0) : rnd() < 0.42 ? 1 : rnd() < 0.12 ? 2 : 0;
+    return { cols: [pick(SHIRT), pick(SKIN), pick(PANTS), hair, pick(['#1a1a1a', '#5a3a22', '#e8e8e8', '#30343a']), pick(['#3f4a3a', '#5a3a2a', '#24324a', '#6a2a2a'])].map(C),
+      style, scale: kid ? 0.6 + rnd() * 0.12 : 0.92 + rnd() * 0.14, speed: old ? 0.85 + rnd() * 0.2 : kid ? 1.3 + rnd() * 0.3 : 1.15 + rnd() * 0.35, friendly: rnd() < 0.75 };
+  }
+
+  // kat, rijrichting -z; de romp scharniert om de heup. Vakken: 0 vacht, 1 bef en sokjes, 2 ogen, 3 neus
+  const CG = (() => {
+    const torso = new THREE.SphereGeometry(1, 12, 8); torso.scale(0.085, 0.09, 0.2);
+    const chest = new THREE.SphereGeometry(1, 10, 6); chest.scale(0.062, 0.07, 0.1);
+    const head = new THREE.SphereGeometry(0.068, 12, 8); head.scale(1.05, 0.92, 1);
+    const ear = (s) => { const e = new THREE.ConeGeometry(0.03, 0.065, 4); e.rotateZ(-s * 0.25); return slotted(e, 0, s * 0.042, 0.088, -0.035); };
+    const muzzle = new THREE.SphereGeometry(0.034, 8, 6); muzzle.scale(1.2, 0.8, 1);
+    const eye = (s) => slotted(new THREE.SphereGeometry(0.012, 6, 4), 2, s * 0.028, 0.045, -0.106);
+    const tail = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0.05, 0.09), new THREE.Vector3(0, 0.15, 0.15), new THREE.Vector3(0, 0.27, 0.13)]);
+    return {
+      body: mergeGeometries([slotted(torso, 0, 0, 0.05, -0.12), slotted(chest, 1, 0, 0.03, -0.24)]),
+      head: mergeGeometries([slotted(head, 0, 0, 0.03, -0.05), ear(-1), ear(1), slotted(muzzle, 1, 0, 0.005, -0.1), eye(-1), eye(1), slotted(new THREE.SphereGeometry(0.011, 6, 4), 3, 0, 0.026, -0.13)]),
+      tail: slotted(new THREE.TubeGeometry(tail, 10, 0.017, 6), 0),
+      leg: mergeGeometries([slotted(new THREE.CylinderGeometry(0.021, 0.018, 0.17, 6), 0, 0, -0.085, 0), slotted(new THREE.SphereGeometry(0.022, 6, 4), 1, 0, -0.165, -0.008)]),
+    };
+  })();
+  // rood, zwart, zwart-wit, grijs, wit, bruin cyperse, grijs-wit
+  const FUR = [['#c8742e', '#efd3a8'], ['#1c1b1b', '#1c1b1b'], ['#1d1c1c', '#f1eee6'], ['#77746d', '#b9b4a8'], ['#eeebe3', '#eeebe3'], ['#6e5238', '#cdb48e'], ['#9b9890', '#f1eee6']];
+  const catLook = () => { const [a, b] = pick(FUR); return { cols: [a, b, pick(['#a8b52a', '#d1b02a', '#6aa0c8']), '#d9958f'].map(C) }; };
+
+  // ---- plekken: bewoners en katten bij de woningen
+  const residents = [], walkers = [], cats = [], swanGroups = [];
+  W.buildings.forEach((b, bi) => {
+    if (b.k !== 0) return;
+    const fp = BUILD_SHAPES[bi]; let cx = 0, cz = 0; for (const [x, z] of fp) { cx += x; cz += z; } cx /= fp.length; cz /= fp.length;
+    const road = nearestRoad(cx, cz, 40); if (!road) return;
+    const L = road.d; if (L < 2) return;
+    const ux = (road.x - cx) / L, uz = (road.z - cz) / L;
+    let f = 0; while (f < L && pip(cx + ux * f, cz + uz * f, fp)) f += 0.4;   // voorgevel
+    const yard = L - f - road.r.w / 2; if (yard < 2.5) return;
+    const r1 = rnd(), r2 = rnd();
+    if (r1 < 0.17) for (let k = 0; k < 5; k++) {
+      const d = f + 1.2 + rnd() * Math.min(5, yard - 2), side = (rnd() - 0.5) * 5, x = cx + ux * d - uz * side, z = cz + uz * d + ux * side;
+      if (free(x, z)) { const face = Math.atan2(-ux, -uz); residents.push({ kind: 'res', bx: x, bz: z, x, z, ox: 0, oz: 0, face, h: face, look: personLook(), ph: rnd() * 6, waveT: 0, rig: null }); break; }
+    }
+    if (r2 < 0.14) for (let k = 0; k < 5; k++) {
+      const d = f + 0.7 + rnd() * Math.min(3.5, yard - 1.5), side = (rnd() - 0.5) * 4, x = cx + ux * d - uz * side, z = cz + uz * d + ux * side;
+      if (!free(x, z)) continue;
+      // dicht bij de weg: deze kat steekt soms over als er iemand aankomt
+      let cross = null;
+      const rd = nearestRoad(x, z, 16);
+      if (rd) {
+        const vx = rd.x - x, vz = rd.z - z, vl = Math.hypot(vx, vz) || 1, ox = rd.x + (vx / vl) * (rd.r.w / 2 + 1.8), oz = rd.z + (vz / vl) * (rd.r.w / 2 + 1.8);
+        if (!inWater(ox, oz) && !inWater(ox + vx / vl, oz + vz / vl) && !inBuilding(ox, oz)) cross = { a: [x, z], b: [ox, oz] };
+      }
+      cats.push({ x, z, h: rnd() * 6.3, state: 'sit', tx: x, tz: z, speed: 0, look: catLook(), cross, nextCross: 0, decided: false, idleT: 0, rig: null });
+      break;
+    }
+  });
+
+  // ---- wandelaars: heen en weer over een stuk stoep of pad
+  const SPACING = { residential: 230, living_street: 200, pedestrian: 200, tertiary: 450, secondary: 500, unclassified: 450, service: 500, footway: 280, path: 320, cycleway: 360, track: 800 };
+  function walkPath(r, s0, off) {
+    const total = roadCum(r).at(-1);
+    const ok = (s) => { const [x, z] = along(r, s, off); return !inWater(x, z) && !inBuilding(x, z) && !inWater(x + (x - along(r, s, 0)[0]) * 0.4, z + (z - along(r, s, 0)[1]) * 0.4); };
+    if (!ok(s0)) return null;
+    let a = s0, b = s0; while (a > Math.max(0, s0 - 60) && ok(a - 1.5)) a -= 1.5; while (b < Math.min(total, s0 + 60) && ok(b + 1.5)) b += 1.5;
+    if (b - a < 25) return null;
+    const pts = [];
+    for (let s = a; s <= b; s += 1.5) {
+      let [x, z] = along(r, s, off);
+      for (const ti of treeGrid.near(x, z)) { const t = TREES[ti], d = Math.hypot(x - t.x, z - t.z); if (d < 0.75 && d > 1e-3) { const k = (0.75 - d) / d; x += (x - t.x) * k; z += (z - t.z) * k; } }
+      pts.push([x, z]);
+    }
+    const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    return { pts, cum, len: cum.at(-1) };
+  }
+  function addWalker(r, s, prefSide) {
+    for (const side of [prefSide, -prefSide]) {
+      const path = walkPath(r, s, r.d ? side * (r.w / 2 + 0.7) : 0);
+      if (!path) { if (!r.d) break; continue; }
+      const w = { kind: 'walk', path, t: rnd() * 400, seg: 0, look: personLook(), ox: 0, oz: 0, h: 0, waveT: 0, stopT: 0, ph: rnd() * 6, rig: null };
+      walkerPos(w); w.h = w.hw; walkers.push(w); return w;
+    }
+    return null;
+  }
+  function walkerPos(w) {
+    const { pts, cum, len } = w.path, ph = (w.t * w.look.speed) % (2 * len), fwd = ph <= len, s = fwd ? ph : 2 * len - ph;
+    let i = w.seg; while (i < cum.length - 2 && cum[i + 1] < s) i++; while (i > 0 && cum[i] > s) i--; w.seg = i;
+    const a = pts[i], b = pts[i + 1], k = (s - cum[i]) / (cum[i + 1] - cum[i] || 1), sg = fwd ? 1 : -1;
+    w.x = a[0] + (b[0] - a[0]) * k + w.ox; w.z = a[1] + (b[1] - a[1]) * k + w.oz; w.hw = Math.atan2(-(b[0] - a[0]) * sg, -(b[1] - a[1]) * sg);
+  }
+  ROADS.forEach((r) => {
+    const sp = SPACING[r.kind]; if (!sp || r.b) return;
+    const total = roadCum(r).at(-1), n = Math.floor(total / sp + rnd());
+    for (let k = 0; k < n; k++) addWalker(r, total * (k + 0.2 + rnd() * 0.6) / n, rnd() < 0.5 ? 1 : -1);
+  });
+  // een wandelaar op de Soemeersingel vlak voor de start, zodat je meteen iemand tegenkomt
+  {
+    const fx0 = -Math.sin(W.start.h), fz0 = -Math.cos(W.start.h);
+    const rd = nearestRoad(W.start.x + fx0 * 75, W.start.z + fz0 * 75, 20);
+    if (rd && !walkers.some((w) => Math.hypot(w.x - W.start.x, w.z - W.start.z) < 140)) addWalker(rd.r, roadCum(rd.r)[rd.i] + rd.t * (roadCum(rd.r)[rd.i + 1] - roadCum(rd.r)[rd.i]), 1);
+  }
+
+  // ---- zwanen: per paar een stuk kanaal waar ze rustig rondjes zwemmen, soms met jongen erachteraan
+  {
+    const lanes = [];
+    ROADS.forEach((r) => {
+      if (!r.d || r.b) return;
+      const total = roadCum(r).at(-1);
+      for (let s = 15; s < total - 15; s += 40) for (const side of [-1, 1]) {
+        let e1 = -1, e2 = -1;
+        for (let d = r.w / 2 + 1; d < 34; d += 1) { const [x, z] = along(r, s, side * d), w = inWater(x, z); if (w && e1 < 0) e1 = d; else if (!w && e1 >= 0) { e2 = d; break; } }
+        if (e1 < 0 || e1 > 20 || e2 < 0 || e2 - e1 < 5) continue;
+        const m = (e1 + e2) / 2, [x, z, tx, tz] = along(r, s, side * m);
+        lanes.push({ x, z, dx: tx, dz: tz, nx: tz * side, nz: -tx * side, half: (e2 - e1) / 2, main: BUMPY.has(r.name) });
+      }
+    });
+    const ahead = [W.start.x - Math.sin(W.start.h) * 110, W.start.z - Math.cos(W.start.h) * 110];
+    const order = lanes.map((l) => [l.main ? rnd() : 1 + rnd(), l]).sort((p, q) => p[0] - q[0]).map((p) => p[1]);
+    const first = lanes.filter((l) => l.main).sort((p, q) => Math.hypot(p.x - ahead[0], p.z - ahead[1]) - Math.hypot(q.x - ahead[0], q.z - ahead[1]))[0];
+    if (first) order.unshift(first);
+    const swanGeo = (young) => {
+      const parts = [];
+      const body = new THREE.SphereGeometry(1, 16, 10); body.scale(0.26, 0.2, 0.52); parts.push(slotted(body, 0, 0, 0.06, 0));
+      for (const s of [-1, 1]) { const w = new THREE.SphereGeometry(1, 12, 8); w.scale(0.12, 0.09, 0.4); w.rotateZ(s * 0.25); w.rotateX(-0.12); parts.push(slotted(w, 0, s * 0.13, 0.17, 0.08)); }
+      const tail = new THREE.ConeGeometry(0.1, 0.22, 8); tail.rotateX(1.2); parts.push(slotted(tail, 0, 0, 0.16, 0.5));
+      const neck = new THREE.CatmullRomCurve3(young ? [new THREE.Vector3(0, 0.12, -0.38), new THREE.Vector3(0, 0.32, -0.45), new THREE.Vector3(0, 0.46, -0.44)]
+        : [new THREE.Vector3(0, 0.12, -0.36), new THREE.Vector3(0, 0.38, -0.5), new THREE.Vector3(0, 0.6, -0.42), new THREE.Vector3(0, 0.75, -0.41)]);
+      parts.push(slotted(new THREE.TubeGeometry(neck, 16, 0.05, 8), 0));
+      const hy = young ? 0.48 : 0.77, hz = young ? -0.47 : -0.45;
+      const head = new THREE.SphereGeometry(0.065, 12, 8); head.scale(0.8, 0.75, 1.25); parts.push(slotted(head, 0, 0, hy, hz));
+      const beak = new THREE.ConeGeometry(0.026, 0.12, 8); beak.rotateX(-(Math.PI / 2 + 0.4)); parts.push(slotted(beak, 1, 0, hy - 0.02, hz - 0.12));
+      if (!young) parts.push(slotted(new THREE.SphereGeometry(0.022, 8, 6), 2, 0, hy + 0.005, hz - 0.075));
+      for (const s of [-1, 1]) parts.push(slotted(new THREE.SphereGeometry(0.011, 6, 4), 2, s * 0.042, hy + 0.012, hz - 0.035));
+      const g = withColor(mergeGeometries(parts)); paint(g, (young ? ['#8f877c', '#3a3632', '#161616'] : ['#f4f3ee', '#e0782a', '#161616']).map(C)); return g;
+    };
+    const SWAN = [swanGeo(false), swanGeo(true)], swanMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, envMapIntensity: 0.6 });
+    for (const l of order) {
+      if (swanGroups.length >= 10) break;
+      if (swanGroups.some((g) => Math.hypot(g.cx - l.x, g.cz - l.z) < 230)) continue;
+      const y = waterLevel(l.x, l.z); if (y === null) continue;
+      const b = Math.max(0.3, Math.min(2.6, l.half - 1.7));
+      const okAt = (d) => { const x = l.x + l.dx * d, z = l.z + l.dz * d; return inWater(x, z) && inWater(x + l.nx * (b + 1.1), z + l.nz * (b + 1.1)) && inWater(x - l.nx * (b + 1.1), z - l.nz * (b + 1.1)); };
+      let pos = 0, neg = 0; while (pos < 22 && okAt(pos + 1)) pos++; while (neg < 22 && okAt(-neg - 1)) neg++;
+      const a = (pos + neg) / 2 - 1.5; if (a < 4) continue;
+      const cx = l.x + l.dx * (pos - neg) / 2, cz = l.z + l.dz * (pos - neg) / 2;
+      const members = [{ young: false, lag: 0, lat: 0 }]; if (rnd() < 0.85) members.push({ young: false, lag: 2.2, lat: 0.4 });
+      if (rnd() < 0.4) { const n = 3 + Math.floor(rnd() * 3); for (let k = 0; k < n; k++) members.push({ young: true, lag: 3.6 + k * 1.3, lat: (rnd() - 0.5) * 0.6 }); }
+      for (const m of members) { m.mesh = new THREE.Mesh(SWAN[m.young ? 1 : 0], swanMat); m.mesh.scale.setScalar(m.young ? 0.62 : 1); m.mesh.castShadow = true; m.mesh.visible = false; m.ph = rnd() * 6; m.h = null; scene.add(m.mesh); }
+      swanGroups.push({ cx, cz, dx: l.dx, dz: l.dz, nx: l.nx, nz: l.nz, a, b, y, w: 0.3 / a, ph: rnd() * 6.3, members });
+    }
+  }
+
+  // ---- poppetjes in een kleine pool
+  const NP = MOBILE ? 8 : 14, NC = MOBILE ? 6 : 10, R_PPL = MOBILE ? 85 : 120, R_CAT = MOBILE ? 60 : 85;
+  const people = [], catRigs = [];
+  for (let i = 0; i < NP; i++) {
+    const g = new THREE.Group(); g.visible = false; scene.add(g);
+    const variants = PG.body.map((v) => withColor(v.clone())), body = new THREE.Mesh(variants[0], lifeMat); g.add(body);
+    const limb = (geo, x, y) => { const p = new THREE.Group(); p.position.set(x, y, 0); p.add(new THREE.Mesh(withColor(geo.clone()), lifeMat)); g.add(p); return p; };
+    people.push({ g, body, variants, legL: limb(PG.leg, -0.085, 0.9), legR: limb(PG.leg, 0.085, 0.9), armL: limb(PG.arm, -0.205, 1.47), armR: limb(PG.arm, 0.205, 1.47), agent: null, phase: 0 });
+    g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  }
+  for (let i = 0; i < NC; i++) {
+    const g = new THREE.Group(); g.visible = false; scene.add(g);
+    const mesh = (geo, parent) => { const m = new THREE.Mesh(withColor(geo.clone()), lifeMat); m.castShadow = true; parent.add(m); return m; };
+    const body = new THREE.Group(); g.add(body); mesh(CG.body, body);
+    const head = new THREE.Group(); head.position.set(0, 0.1, -0.29); body.add(head); mesh(CG.head, head);
+    const tail = new THREE.Group(); tail.position.set(0, 0.06, 0.07); body.add(tail); mesh(CG.tail, tail);
+    const legs = [[-1, true], [1, true], [-1, false], [1, false]].map(([sx, front]) => { const p = new THREE.Group(); p.userData = { sx, front }; g.add(p); mesh(CG.leg, p); return p; });
+    catRigs.push({ g, body, head, tail, legs, agent: null, phase: 0, sit: 1 });
+  }
+  const dressPerson = (rig, a) => { rig.body.geometry = rig.variants[a.look.style]; for (const m of [rig.body, rig.legL.children[0], rig.legR.children[0], rig.armL.children[0], rig.armR.children[0]]) paint(m.geometry, a.look.cols); rig.g.scale.setScalar(a.look.scale); };
+  const dressCat = (rig, c) => { rig.g.traverse((o) => { if (o.isMesh) paint(o.geometry, c.look.cols); }); rig.sit = c.state === 'sit' ? 1 : 0; c.idleT = Math.max(c.idleT, performance.now() + 4000 + Math.random() * 16000); };
+  // de dichtstbijzijnde plekken krijgen een poppetje; wie er al een heeft houdt het
+  function assign(pool, list, R, dress) {
+    const near = [];
+    for (const a of list) { const d = (a.x - state.x) ** 2 + (a.z - state.z) ** 2; if (d < R * R) near.push([d, a]); }
+    near.sort((p, q) => p[0] - q[0]); const want = new Set(near.slice(0, pool.length).map((p) => p[1]));
+    for (const rig of pool) if (rig.agent && !want.has(rig.agent)) { rig.agent.rig = null; rig.agent = null; rig.g.visible = false; }
+    for (const a of want) if (!a.rig) { const rig = pool.find((r) => !r.agent); if (!rig) break; rig.agent = a; a.rig = rig; dress(rig, a); rig.g.visible = true; }
+  }
+
+  // ---- gedrag
+  let fx = 0, fz = -1, rx = 1, rz = 0, tick = 0, lastMiss = 0;
+  // ligt (x, z) in de baan van de wagen? Dan de kant om naartoe weg te springen, anders 0
+  function danger(x, z, pad) {
+    const v = state.v; if (Math.abs(v) < 0.4 || state.event) return 0;
+    const dx = x - state.x, dz = z - state.z, fw = dx * fx + dz * fz, lt = dx * rx + dz * rz;
+    if (Math.abs(lt) > VEH.half + pad) return 0;
+    if (fw > VEH.wb + VEH.front + 0.3 + Math.max(0, v) * 0.5 || fw < -VEH.rear - 0.3 - Math.max(0, -v) * 0.5) return 0;
+    return lt >= 0 ? 1 : -1;
+  }
+  function nearMiss(cat, now) {
+    if (Math.abs(state.v) < 3 || now - lastMiss < 7000 || (state.mode !== 'drive' && state.mode !== 'roam')) return;
+    lastMiss = now;
+    if (cat) { meow(); showToast('Miauw!', 'die kat schoot net op tijd weg', 1500); } else showToast('Hé, kijk uit!', 'die moest opzij springen', 1500);
+  }
+  function runTo(c, x, z, speed, st) { c.tx = x; c.tz = z; c.speed = speed; c.state = st; }
+  function flee(c, side) {
+    let bx = c.x - state.x, bz = c.z - state.z; const L = Math.hypot(bx, bz) || 1; bx /= L; bz /= L;
+    if (side) { bx = bx * 0.4 + rx * side; bz = bz * 0.4 + rz * side; const l2 = Math.hypot(bx, bz) || 1; bx /= l2; bz /= l2; }
+    for (let k = 0; k < 9; k++) {
+      const ang = (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.45, ca = Math.cos(ang), sa = Math.sin(ang), d = 4 + Math.random() * 4;
+      const x = c.x + (bx * ca - bz * sa) * d, z = c.z + (bx * sa + bz * ca) * d;
+      if (!inWater(x, z) && !inBuilding(x, z) && !roadAt(x, z, 0.5)) { runTo(c, x, z, 6.5, 'flee'); return; }
+    }
+    if (side) runTo(c, c.x + rx * side * 2.5, c.z + rz * side * 2.5, 7, 'flee');
+  }
+  function poseCat(rig, f, run, t) {
+    const ph = rig.phase;
+    rig.body.position.set(0, 0.15 - 0.09 * f + (run ? Math.abs(Math.sin(ph)) * 0.02 * run : 0), 0.12);
+    rig.body.rotation.x = 0.8 * f;
+    rig.head.rotation.x = -0.8 * f;
+    rig.tail.rotation.x = f * 1.9 + (1 - f) * (-0.2 + run * 0.6) + Math.sin(t * (f ? 1.3 : 3)) * 0.08;
+    rig.tail.rotation.z = Math.sin(t * 0.9 + rig.phase * 0.1) * 0.35 * f;
+    for (const L of rig.legs) {
+      const { sx, front } = L.userData, sw = run ? Math.sin(ph + (front ? 0 : Math.PI) + (sx > 0 ? 0.7 : 0)) * (0.35 + run * 0.5) : 0;
+      if (front) { L.position.set(sx * 0.042, 0.17 + 0.07 * f, -0.14 + 0.07 * f); L.scale.y = 1 + 0.41 * f; L.rotation.x = sw * (1 - f); }
+      else { L.position.set(sx * (0.045 + 0.022 * f), 0.17 - 0.12 * f, 0.11 - 0.03 * f); L.scale.y = 1 - 0.2 * f; L.rotation.x = sw * (1 - f) + 1.4 * f; }
+    }
+  }
+
+  function update(dt, now) {
+    const t = now / 1000;
+    fx = -Math.sin(state.h); fz = -Math.cos(state.h); rx = -fz; rz = fx;
+    tick -= dt; if (tick <= 0) { tick = 0.25; assign(people, residents.concat(walkers), R_PPL, dressPerson); assign(catRigs, cats, R_CAT, dressCat); }
+    // mensen
+    for (const rig of people) {
+      const a = rig.agent; if (!a) continue;
+      a.stopT = Math.max(0, (a.stopT || 0) - dt); a.waveT = Math.max(0, a.waveT - dt); a.scare = Math.max(0, (a.scare || 0) - dt);
+      let walking = false;
+      if (a.kind === 'walk') { if (a.stopT <= 0) { a.t += dt; walking = true; } walkerPos(a); } else { a.x = a.bx + a.ox; a.z = a.bz + a.oz; }
+      const vx = state.x - a.x, vz = state.z - a.z, dist = Math.hypot(vx, vz), toCar = Math.atan2(-vx, -vz);
+      const side = danger(a.x, a.z, 0.5); let hop = 0;
+      if (side) { a.ox += rx * side * 6.5 * dt; a.oz += rz * side * 6.5 * dt; a.scare = 0.8; hop = 0.1; nearMiss(false, now); }
+      else if (dist > 7 && (a.ox || a.oz)) { const L = Math.hypot(a.ox, a.oz), k = Math.max(0, L - 1.1 * dt) / L; a.ox *= k; a.oz *= k; if (L < 0.03) a.ox = a.oz = 0; walking = true; }
+      if (a.look.friendly && !a.waved && dist < (a.kind === 'res' ? 18 : 11) && Math.abs(state.v) > 1.5) { a.waved = true; a.waveT = 2.3; }
+      if (dist > 50) a.waved = false;
+      let tgt = a.kind === 'walk' ? a.hw : (dist < 30 ? toCar : a.face + Math.sin(t * 0.25 + a.ph) * 0.4);
+      if (a.scare > 0 || a.stopT > 0 || (a.kind === 'res' && a.waveT > 0)) tgt = toCar;
+      a.h = turn(a.h, tgt, dt * 6);
+      rig.g.position.set(a.x, 0.02 + hop, a.z); rig.g.rotation.y = a.h;
+      let lx = 0, rxa = 0, lz = -0.06, rza = 0.06, legL = 0, legR = 0;
+      if (walking) {
+        rig.phase += (2 * Math.PI * a.look.speed * dt) / 1.35; const s = Math.sin(rig.phase);
+        legL = s * 0.45; legR = -s * 0.45; lx = -s * 0.35; rxa = s * 0.35; rig.g.position.y += Math.abs(Math.cos(rig.phase)) * 0.03 * a.look.scale;
+      } else { lx = Math.sin(t * 1.1 + a.ph) * 0.04; rxa = -lx; }
+      if (a.waveT > 0) { rxa = 0; rza = 2.6 + Math.sin(t * 10) * 0.35; }
+      if (a.scare > 0) { lx = rxa = 0; lz = -2.3; rza = 2.3; }
+      rig.legL.rotation.x = legL; rig.legR.rotation.x = legR;
+      rig.armL.rotation.set(lx, 0, lz); rig.armR.rotation.set(rxa, 0, rza);
+    }
+    // katten
+    for (const rig of catRigs) {
+      const c = rig.agent; if (!c) continue;
+      const dx = c.x - state.x, dz = c.z - state.z, dist = Math.hypot(dx, dz), fw = dx * fx + dz * fz, lt = dx * rx + dz * rz;
+      // komt er een wagen aan, dan schiet deze kat soms nog snel over
+      if (c.cross && c.state === 'sit' && now > c.nextCross) {
+        const inWin = state.v > 3 && fw > 12 && fw < 32 && Math.abs(lt) < 9;
+        if (inWin && !c.decided) {
+          c.decided = true;
+          if (Math.random() < 0.5) { const atA = Math.hypot(c.x - c.cross.a[0], c.z - c.cross.a[1]) < Math.hypot(c.x - c.cross.b[0], c.z - c.cross.b[1]), to = atA ? c.cross.b : c.cross.a; runTo(c, to[0], to[1], 5.5, 'cross'); c.nextCross = now + 40000; if (dist < 35) meow(); }
+        } else if (!inWin && (fw < 0 || dist > 45)) c.decided = false;
+      }
+      const side = danger(c.x, c.z, 0.45);
+      if (side) { if (c.state === 'cross') c.speed = 10; else flee(c, side); nearMiss(true, now); }
+      else if (c.state === 'sit' && dist < 6 && Math.abs(state.v) > 0.6) flee(c, 0);
+      if (c.state === 'sit' && now > c.idleT) {
+        c.idleT = now + 9000 + Math.random() * 20000;
+        const ang = Math.random() * 6.3, d = 1 + Math.random() * 2, x = c.x + Math.cos(ang) * d, z = c.z + Math.sin(ang) * d;
+        if (free(x, z)) runTo(c, x, z, 0.45, 'walk');
+      }
+      if (c.state !== 'sit') {
+        const tx = c.tx - c.x, tz = c.tz - c.z, L = Math.hypot(tx, tz);
+        if (L < 0.12) { c.state = 'sit'; c.speed = 0; }
+        else { const st = Math.min(L, c.speed * dt); c.x += (tx / L) * st; c.z += (tz / L) * st; c.h = turn(c.h, Math.atan2(-tx, -tz), dt * 12); }
+      }
+      rig.sit += ((c.state === 'sit' ? 1 : 0) - rig.sit) * Math.min(1, dt * (c.state === 'sit' ? 2.5 : 12));
+      const run = c.state === 'sit' ? 0 : Math.min(1, c.speed / 6);
+      rig.phase += dt * (c.state === 'sit' ? 0 : 5 + c.speed * 2.6);
+      poseCat(rig, rig.sit, c.state === 'sit' ? 0 : Math.max(0.15, run), t);
+      // zittend kijkt hij de wagen na
+      const look = Math.atan2(Math.sin(Math.atan2(dx, dz) - c.h), Math.cos(Math.atan2(dx, dz) - c.h));
+      rig.head.rotation.y = c.state === 'sit' && dist < 25 ? Math.max(-1.1, Math.min(1.1, look)) * rig.sit : 0;
+      rig.g.position.set(c.x, 0.02, c.z); rig.g.rotation.y = c.h;
+    }
+    // zwanen
+    for (const gr of swanGroups) {
+      const near = Math.hypot(gr.cx - camera.position.x, gr.cz - camera.position.z) < (MOBILE ? 260 : 380);
+      for (const m of gr.members) {
+        m.mesh.visible = near; if (!near) continue;
+        const th = gr.w * (t - m.lag) + gr.ph, c = Math.cos(th), s = Math.sin(th);
+        const x = gr.cx + gr.dx * gr.a * c + gr.nx * (gr.b * s + m.lat), z = gr.cz + gr.dz * gr.a * c + gr.nz * (gr.b * s + m.lat);
+        const vx = -gr.dx * gr.a * s + gr.nx * gr.b * c, vz = -gr.dz * gr.a * s + gr.nz * gr.b * c, want = Math.atan2(-vx, -vz);
+        m.h = m.h === null ? want : turn(m.h, want, dt * 1.5);
+        m.mesh.position.set(x, gr.y + Math.sin(t * 1.4 + m.ph) * 0.012, z); m.mesh.rotation.set(0, m.h, Math.sin(t * 1.1 + m.ph) * 0.03, 'YXZ');
+      }
+    }
+  }
+  // toeteren: mensen zwaaien, katten rennen weg, zwanen sissen terug
+  function honk() {
+    for (const rig of people) if (rig.agent && Math.hypot(rig.agent.x - state.x, rig.agent.z - state.z) < 35) { rig.agent.waveT = 1.8 + Math.random() * 0.6; if (rig.agent.kind === 'walk') rig.agent.stopT = 1.8; }
+    for (const rig of catRigs) if (rig.agent && Math.hypot(rig.agent.x - state.x, rig.agent.z - state.z) < 20 && rig.agent.state === 'sit') flee(rig.agent, 0);
+    if (state.mode !== 'intro' && swanGroups.some((g) => Math.hypot(g.cx - state.x, g.cz - state.z) < g.a + 25)) { hiss(); showToast('Sssss!', 'de zwanen zijn niet onder de indruk', 1500); }
+  }
+  return { update, honk, residents, walkers, cats, swanGroups, people, catRigs, free };
+})();
 
 // ------------------------------------------------------------------ route: Dijkstra over het wegennet
 const GRAPH = new Map();
@@ -1522,6 +1903,22 @@ function splashSound() {
   const b = ctx.createBuffer(1, ctx.sampleRate * 1.2, ctx.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2.5);
   const s = ctx.createBufferSource(); s.buffer = b; const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(3000, t); f.frequency.exponentialRampToValueAtTime(300, t + 1); const g = ctx.createGain(); g.gain.value = 0.9; s.connect(f); f.connect(g); g.connect(master); s.start();
 }
+// miauw: een zaagtand die omhoog en weer omlaag glijdt, door een meeschuivend bandfilter
+function meow() {
+  if (!audio) return; const { ctx, master } = audio; const t = ctx.currentTime, p = 0.9 + Math.random() * 0.25;
+  const o = ctx.createOscillator(); o.type = 'sawtooth';
+  o.frequency.setValueAtTime(480 * p, t); o.frequency.linearRampToValueAtTime(780 * p, t + 0.18); o.frequency.linearRampToValueAtTime(520 * p, t + 0.55);
+  const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 2.5; f.frequency.setValueAtTime(900, t); f.frequency.linearRampToValueAtTime(1900, t + 0.2); f.frequency.linearRampToValueAtTime(1000, t + 0.55);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.3, t + 0.06); g.gain.setValueAtTime(0.3, t + 0.34); g.gain.linearRampToValueAtTime(0, t + 0.6);
+  o.connect(f); f.connect(g); g.connect(master); o.start(t); o.stop(t + 0.65);
+}
+// gesis van een zwaan: hoge ruis die aan- en wegzwelt
+function hiss() {
+  if (!audio) return; const { ctx, master } = audio; const t = ctx.currentTime;
+  const b = ctx.createBuffer(1, ctx.sampleRate * 0.8, ctx.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * i / d.length);
+  const s = ctx.createBufferSource(); s.buffer = b; const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 2600; const g = ctx.createGain(); g.gain.value = 0.35;
+  s.connect(f); f.connect(g); g.connect(master); s.start(t + 0.4);
+}
 function bonk() { beep([90, 60], 0.18, 'triangle', 0.5); }
 function thump(strength) { beep([70 + strength * 30], 0.08, 'sine', 0.15 + strength * 0.35); }
 
@@ -1584,7 +1981,7 @@ document.addEventListener('touchend', (e) => {
   lastTouchEnd = now;
 }, { passive: false });
 document.addEventListener('dblclick', (e) => e.preventDefault());
-function honk() { beep(VEH.horn[0], 0.38, VEH.horn[1], 0.18); }
+function honk() { beep(VEH.horn[0], 0.38, VEH.horn[1], 0.18); LIFE.honk(); }
 
 // ------------------------------------------------------------------ spelstatus
 const state = {
@@ -1649,7 +2046,7 @@ function physics(dt) {
   if (gas) { if (state.v < -0.2) acc = 6.5; else acc = (turbo ? VEH.accT : VEH.acc) * Math.max(0, 1 - Math.pow(Math.max(0, state.v) / vmax, 2.2)) + (state.v > vmax ? -2 : 0); }
   if (!gas && state.v > vmax) acc -= 1.5; // motorrem na het loslaten van Shift
   const MAX_REV = VEH.rev / 3.6;
-  if (brake) { if (state.v > 0.3) acc = -6.5; else acc = -1.6 * (1 - Math.max(0, -state.v) / MAX_REV); }
+  if (brake) { if (state.v > 0.3) acc = -6.5; else acc = -3.6 * (1 - Math.pow(Math.max(0, -state.v) / MAX_REV, 1.6)); }
   acc -= drag * state.v + (onRoad ? 0.18 : 0.6) * Math.sign(state.v) * (Math.abs(state.v) > 0.05 ? 1 : 0);
   state.v += acc * dt;
   if (!gas && !brake && Math.abs(state.v) < 0.08) state.v = 0;
@@ -1850,6 +2247,7 @@ function frame(now) {
     const o = VEH.orbit, mid = VEH.wb / 2;
     camera.position.set(state.x + Math.sin(t) * o + fx * mid, 1.6 + o * 0.12, state.z + Math.cos(t) * o + fz * mid); camera.lookAt(state.x + fx * mid, 0.9, state.z + fz * mid);
   } else updateCamera(dt);
+  LIFE.update(dt, now);
   // zon en schaduw volgen de Ape
   sun.position.set(state.x + sunDir.x * 200, sunDir.y * 200, state.z + sunDir.z * 200); sun.target.position.set(state.x, 0, state.z);
   sky.position.copy(camera.position); clouds.position.set(camera.position.x, 0, camera.position.z);
@@ -1929,7 +2327,7 @@ const boot = (data) => {
   requestAnimationFrame(frame);
 };
 window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
-window.__ape = { state, keys, routeFrom, DEST, camera, THREE, scene, bumpHeight, BUMPS, get aerialLoaded() { return aerialLoaded; }, get frames() { return renderer.info.render.frame; },
+window.__ape = { state, keys, routeFrom, DEST, camera, THREE, scene, bumpHeight, BUMPS, LIFE, get aerialLoaded() { return aerialLoaded; }, get frames() { return renderer.info.render.frame; },
   sim(seconds, dt = 1 / 60) { let maxSus = 0, thumps = 0, events = []; const t0 = state.lastThump;
     for (let t = 0; t < seconds; t += dt) { if (state.event) { updateEvent(dt); if (!events.includes(state.event)) events.push(state.event); } else physics(dt); updateNav(dt); maxSus = Math.max(maxSus, Math.abs(state.susY)); if (state.lastThump !== t0) thumps++; }
     return { x: +state.x.toFixed(1), z: +state.z.toFixed(1), v: +(state.v * 3.6).toFixed(1), maxSus: +maxSus.toFixed(3), events, street: streetShown }; } };
