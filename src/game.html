@@ -1798,10 +1798,13 @@ const LIFE = (() => {
 
 // ------------------------------------------------------------------ route: Dijkstra over het wegennet
 const GRAPH = new Map();
+// alleen wegen binnen de kaart: de route mag niet over de rand, want daar houdt het rijden op
+const onMap = ([x, z]) => x > BX0 + 20 && x < BX1 - 20 && z > BZ0 + 20 && z < BZ1 - 20;
 ROADS.forEach((r) => {
   if (!r.d) return;
   for (let i = 0; i < r.n.length - 1; i++) {
     const a = r.n[i], b = r.n[i + 1], [ax, az] = NODES[a], [bx, bz] = NODES[b];
+    if (!onMap(NODES[a]) || !onMap(NODES[b])) continue;
     const w = Math.hypot(bx - ax, bz - az) * (r.u ? 1.4 : 1);
     if (!GRAPH.has(a)) GRAPH.set(a, []); if (!GRAPH.has(b)) GRAPH.set(b, []);
     GRAPH.get(a).push([b, w]); GRAPH.get(b).push([a, w]);

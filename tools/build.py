@@ -505,12 +505,16 @@ def main():
     gate_node = roads[gri]['n'][gi if gt < 0.5 else gi + 1]
 
     # afstand over de weg naar de bestemming, om de Ape bij de start de goede kant op te zetten
+    EDGE = 20  # zo ver van de rand houdt de kaart op (de game stopt je op 15 m)
+    inside_map = lambda x, z, m: BOUNDS[0] + m < x < BOUNDS[2] - m and BOUNDS[1] + m < z < BOUNDS[3] - m
     adj = {}
     for r in roads:
         if not r['d']:
             continue
         for i in range(len(r['n']) - 1):
             u, v = r['n'][i], r['n'][i + 1]
+            if not (inside_map(*nodes[u], EDGE) and inside_map(*nodes[v], EDGE)):
+                continue  # de game rijdt en routeert niet over de rand van de kaart
             w = math.hypot(nodes[u][0] - nodes[v][0], nodes[u][1] - nodes[v][1])
             adj.setdefault(u, []).append((v, w)); adj.setdefault(v, []).append((u, w))
     import heapq
@@ -566,8 +570,9 @@ def main():
                 if g is None or g[0] > 50:
                     continue
             d, ax, az, ri, i, tt = g
-            node = roads[ri]['n'][i if tt < 0.5 else i + 1]
-            if node not in dist:  # niet bereikbaar over de weg
+            ends = (i, i + 1) if tt < 0.5 else (i + 1, i)
+            node = next((roads[ri]['n'][e] for e in ends if roads[ri]['n'][e] in dist), None)
+            if node is None or not inside_map(ax, az, EDGE + 5):  # niet bereikbaar over de weg, of op de rand van de kaart
                 continue
             ux, uz = cx - ax, cz - az
             ul = math.hypot(ux, uz) or 1
@@ -576,6 +581,8 @@ def main():
             if in_building(px, pz):
                 off = roads[ri]['w'] / 2 + 0.7
                 px, pz = ax + ux / ul * off, az + uz / ul * off
+            if not inside_map(px, pz, EDGE + 5):
+                continue
             seen.add(label)
             addrs.append([label, dm(ax), dm(az), dm(px), dm(pz), node, dm(cx), dm(cz)])
 
