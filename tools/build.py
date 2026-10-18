@@ -18,10 +18,10 @@ DEST_LATLON = (51.4054350, 5.9108390)  # Koolweg 42
 # linkpreview (Telegram, WhatsApp, Slack) voor de GitHub Pages-versie
 SITE_URL = 'https://jankeesvw.github.io/helenaveen-bezorgd/'
 SOCIAL_META = (
-    '<meta name="description" content="Bezorg met een groene Piaggio Ape zoveel mogelijk adressen in Helenaveen, over de wortelbulten en langs de Helenavaart, en laat je niet pakken door de politie.">\n'
+    '<meta name="description" content="Bezorg met een Ape, Fiat 500, Kever of VW-busje zoveel mogelijk adressen in Helenaveen, over de wortelbulten en langs de Helenavaart, en laat je niet pakken door de politie.">\n'
     '<meta property="og:type" content="website">\n'
-    '<meta property="og:title" content="Met de Ape door Helenaveen">\n'
-    '<meta property="og:description" content="Bezorgen in 3D op echte kaartdata: vijf minuten, zoveel mogelijk adressen, en rij je te hard dan komt de politie achter je aan.">\n'
+    '<meta property="og:title" content="Helenaveen bezorgd">\n'
+    '<meta property="og:description" content="Bezorgen in 3D op echte kaartdata: pizza\'s, eieren, een taart of een aquarium, in vijf minuten zoveel mogelijk adressen, en rij je te hard dan komt de politie achter je aan.">\n'
     f'<meta property="og:url" content="{SITE_URL}">\n'
     f'<meta property="og:image" content="{SITE_URL}social.jpg">\n'
     '<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">\n'

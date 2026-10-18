@@ -7,10 +7,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1d4f91">
-<meta name="description" content="Bezorg met een groene Piaggio Ape zoveel mogelijk adressen in Helenaveen, over de wortelbulten en langs de Helenavaart, en laat je niet pakken door de politie.">
+<meta name="description" content="Bezorg met een Ape, Fiat 500, Kever of VW-busje zoveel mogelijk adressen in Helenaveen, over de wortelbulten en langs de Helenavaart, en laat je niet pakken door de politie.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Met de Ape door Helenaveen">
-<meta property="og:description" content="Bezorgen in 3D op echte kaartdata: vijf minuten, zoveel mogelijk adressen, en rij je te hard dan komt de politie achter je aan.">
+<meta property="og:title" content="Helenaveen bezorgd">
+<meta property="og:description" content="Bezorgen in 3D op echte kaartdata: pizza's, eieren, een taart of een aquarium, in vijf minuten zoveel mogelijk adressen, en rij je te hard dan komt de politie achter je aan.">
 <meta property="og:url" content="https://jankeesvw.github.io/helenaveen-bezorgd/">
 <meta property="og:image" content="https://jankeesvw.github.io/helenaveen-bezorgd/social.jpg">
 <meta property="og:image:width" content="1200">
@@ -21,7 +21,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%231d4f91%22/%3E%3Ctext x=%2216%22 y=%2224%22 font-family=%22Arial%22 font-weight=%22900%22 font-size=%2222%22 fill=%22%234f9a45%22 text-anchor=%22middle%22%3EA%3C/text%3E%3C/svg%3E">
 </head>
 <body>
-<title>Met de Ape door Helenaveen</title>
+<title>Helenaveen bezorgd</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -259,7 +259,7 @@ body.is-touch .tilt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
   <div class="card" role="dialog" aria-labelledby="startTitle">
     <div class="cap"><span>Helenaveen</span><span>Gem. Deurne</span></div>
     <div class="body">
-      <h1 id="startTitle">Met de <em>Ape</em> door Helenaveen</h1>
+      <h1 id="startTitle">Helenaveen <em>bezorgd</em></h1>
       <div class="pick" id="pick" role="radiogroup" aria-label="Kies je wagen">
         <button type="button" role="radio" data-v="ape" aria-checked="true"><svg viewBox="0 0 64 34" aria-hidden="true"><path d="M6 27V14Q6 6 14 6h8q4 0 4 6v6h32v9z" fill="#4f9a45"/><path d="M8 16v-3q0-5 5-5h5v8z" fill="#cfe2ea"/><circle cx="14" cy="28" r="4.2" fill="#1b1d1f"/><circle cx="48" cy="28" r="4.2" fill="#1b1d1f"/></svg><span>Ape</span><small>45 km/u</small></button>
         <button type="button" role="radio" data-v="fiat" aria-checked="false"><svg viewBox="0 0 64 34" aria-hidden="true"><path d="M7 26q-2-8 5-10l8-7q6-4 16-3 10 1 14 8 8 2 8 12z" fill="#c4161c"/><path d="M21 15l5-5q4-2 10-2h4q5 1 7 7z" fill="#cfe2ea"/><circle cx="17" cy="27" r="4.5" fill="#1b1d1f"/><circle cx="47" cy="27" r="4.5" fill="#1b1d1f"/></svg><span>Fiat 500</span><small>85 km/u</small></button>
@@ -1487,7 +1487,7 @@ function buildBus(V) {
 }
 
 const VEHICLES = {
-  ape: { id: 'ape', name: 'Ape', it: 'de Ape', title: 'Met de <em>Ape</em> door Helenaveen', desc: 'groene Piaggio Ape', build: buildApe,
+  ape: { id: 'ape', name: 'Ape', it: 'de Ape', desc: 'groene Piaggio Ape', build: buildApe,
     wb: 1.7, track: 1.12, wheelR: 0.245, front: 0.25, rear: 0.66, half: 0.66, three: true, rev: 22,
     vmax: 45, vturbo: 70, acc: 2.6, accT: 3.4, tip: { a0: 5.0, a1: 0.25, lift: 6.3, tip: 7.0 }, lean: 0.055,
     phys: { mass: 420, cg: [0.5, -0.6], h: 1.7, clear: 0.3, k: 34, dc: 3.4, dr: 4.0, rest: 0.2, travel: 0.18, mu: 1.2, roll: 0.65 },
@@ -1495,7 +1495,7 @@ const VEHICLES = {
     gears: [16, 31, 45], dial: 80, eye: [0, 1.44, -1.0], chase: [5.4, 2.1], orbit: 7, sound: { base: 38, span: 120, lp: 500, type: 'sawtooth' }, horn: [[415, 520], 'square'],
     turboLabel: 'OPGEVOERD', gasText: 'gas geven (de Ape haalt 45 km/u)', turboText: 'opgevoerd: tot 70 km/u', steerText: 'sturen; scherp sturen op snelheid kantelt hem',
     tipText: 'een Ape neem je niet op vol stuur', endText: 'De laadbak is leeg.' },
-  fiat: { id: 'fiat', name: 'Fiat 500', it: 'de Fiat', title: 'Met de <em>Fiat 500</em> door Helenaveen', desc: 'rode Fiat 500', build: buildFiat,
+  fiat: { id: 'fiat', name: 'Fiat 500', it: 'de Fiat', desc: 'rode Fiat 500', build: buildFiat,
     wb: 1.84, track: 1.12, wheelR: 0.27, tyreW: 0.13, front: 0.56, rear: 0.57, half: 0.67, rev: 32,
     vmax: 85, vturbo: 95, acc: 2.3, accT: 2.7, grip: 7.8, lean: 0.04,
     phys: { mass: 560, cg: [0.46, -0.75], h: 1.32, clear: 0.24, k: 34, dc: 3.4, dr: 4.0, rest: 0.18, travel: 0.16, mu: 1.05, roll: 0.5 },
@@ -1503,7 +1503,7 @@ const VEHICLES = {
     gears: [25, 45, 65, 95], dial: 120, eye: [-0.3, 1.13, -1.28], chase: [5.8, 2.0], orbit: 7, sound: { base: 30, span: 88, lp: 420, type: 'square' }, horn: [[520, 620], 'square'],
     turboLabel: 'PLANKGAS', gasText: 'gas geven (de Fiat haalt 85 km/u)', turboText: 'plankgas: tot 95 km/u', steerText: 'sturen',
     endText: 'Het linnen dak mag open.' },
-  kever: { id: 'kever', name: 'Kever', it: 'de Kever', title: 'Met de <em>Kever</em> door Helenaveen', desc: 'rode Volkswagen Kever', build: buildKever,
+  kever: { id: 'kever', name: 'Kever', it: 'de Kever', desc: 'rode Volkswagen Kever', build: buildKever,
     wb: 2.4, track: 1.32, wheelR: 0.31, tyreW: 0.16, front: 0.86, rear: 0.82, half: 0.8, rev: 35,
     vmax: 100, vturbo: 120, acc: 2.7, accT: 3.2, grip: 8.2, lean: 0.05,
     phys: { mass: 820, cg: [0.52, -1.0], h: 1.5, clear: 0.26, k: 30, dc: 3.4, dr: 4.0, rest: 0.2, travel: 0.18, mu: 1.12, roll: 0.5 },
@@ -1511,7 +1511,7 @@ const VEHICLES = {
     gears: [30, 55, 85, 120], dial: 140, eye: [-0.33, 1.24, -1.62], chase: [6.4, 2.2], orbit: 8, sound: { base: 24, span: 76, lp: 360, type: 'sawtooth' }, horn: [[440, 554], 'sawtooth'],
     turboLabel: 'PLANKGAS', gasText: 'gas geven (de Kever haalt 100 km/u)', turboText: 'plankgas: tot 120 km/u', steerText: 'sturen',
     endText: 'De boxermotor tikt nog even na.' },
-  bus: { id: 'bus', name: 'VW-busje', it: 'het busje', title: 'Met het <em>VW-busje</em> door Helenaveen', desc: 'Samtgrüne Volkswagen T2', build: buildBus,
+  bus: { id: 'bus', name: 'VW-busje', it: 'het busje', desc: 'Samtgrüne Volkswagen T2', build: buildBus,
     wb: 2.4, track: 1.4, wheelR: 0.33, tyreW: 0.19, front: 0.75, rear: 1.36, half: 0.9, rev: 30,
     vmax: 95, vturbo: 110, acc: 2.0, accT: 2.4, tip: { a0: 6.0, a1: 0.12, lift: 7.4, tip: 8.4 }, lean: 0.08,
     phys: { mass: 1250, cg: [0.8, -1.1], h: 1.95, clear: 0.3, k: 28, dc: 3.4, dr: 4.0, rest: 0.22, travel: 0.2, mu: 1.15, roll: 0.7 },
@@ -4108,7 +4108,6 @@ function showStartCard() {
 }
 function chooseVehicle(id) {
   setVehicle(id); if (PHYS.ok) PHYS.setVehicle();
-  $('startTitle').innerHTML = VEH.title;
   $('introText').textContent = `Je ${VEH.desc} staat voor Soemeersingel 25. Bezorg in vijf minuten zoveel mogelijk adressen in Helenaveen: elk adres levert punten op, en hoe sneller je er bent, hoe meer fooi.`;
   $('kGas').textContent = VEH.gasText; $('kTurbo').textContent = VEH.turboText; $('kSteer').textContent = VEH.steerText;
   document.querySelectorAll('#pick button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.v === VEH.id)));
