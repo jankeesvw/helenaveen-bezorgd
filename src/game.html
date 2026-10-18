@@ -3102,11 +3102,11 @@ const CARGO = (() => {
     },
     bloemen(g) {
       const emmer = M('#9aa0a6', { metalness: 0.6, roughness: 0.4 }), steel = M('#3f7a35'), kleuren = ['#d8263a', '#f2c12e', '#e86aa0', '#f4f1ea', '#8a4fc2', '#f07a1a'].map((c) => M(c));
-      for (const [x, z, n] of [[-0.2, 0, 12], [0.26, 0.1, 8]]) {
+      for (const [x, z, n] of [[-0.2, 0, 22], [0.26, 0.1, 16]]) {
         cyl(g, 0.17, 0.13, 0.3, emmer, x, 0.15, z);
-        for (let k = 0; k < n; k++) { const a = k * 2.4, r = 0.03 + (k % 4) * 0.025, hx = x + Math.cos(a) * r, hz = z + Math.sin(a) * r, hy = 0.5 + (k % 3) * 0.06;
+        for (let k = 0; k < n; k++) { const a = k * 2.4, r = 0.02 + (k % 5) * 0.03, hx = x + Math.cos(a) * r, hz = z + Math.sin(a) * r, hy = 0.48 + (k % 4) * 0.05 - r * 0.4;
           const s = add(g, new THREE.CylinderGeometry(0.008, 0.008, hy - 0.2, 4), steel, (x + hx) / 2, 0.2 + (hy - 0.2) / 2, (z + hz) / 2); s.rotation.z = (x - hx) * 0.8; s.rotation.x = (hz - z) * 0.8;
-          ball(g, 0.045 + (k % 2) * 0.012, kleuren[k % kleuren.length], hx, hy, hz, 0.8); }
+          ball(g, 0.055 + (k % 3) * 0.012, kleuren[k % kleuren.length], hx, hy, hz, 0.8); }
       }
     },
     melk(g) {
@@ -3122,9 +3122,9 @@ const CARGO = (() => {
       box(g, 0.74, 0.03, 0.42, rand, 0, 0.015, 0); box(g, 0.74, 0.45, 0.42, glas, 0, 0.255, 0); box(g, 0.74, 0.02, 0.42, rand, 0, 0.47, 0);
       box(g, 0.7, 0.05, 0.38, zand, 0, 0.055, 0);
       for (let k = 0; k < 4; k++) add(g, new THREE.ConeGeometry(0.03, 0.2 + k * 0.03, 5), plant, -0.25 + k * 0.05, 0.17, -0.1 + (k % 2) * 0.08);
-      water = add(g, new THREE.BoxGeometry(0.7, 0.34, 0.38), M('#3f8fb5', { transparent: true, opacity: 0.38, roughness: 0.1, depthWrite: false }), 0, 0.25, 0);
+      water = add(g, new THREE.BoxGeometry(0.7, 0.34, 0.38), M('#2f84b8', { transparent: true, opacity: 0.55, roughness: 0.1, depthWrite: false }), 0, 0.25, 0);
       fish = new THREE.Group(); fish.position.set(0.05, 0.27, 0); g.add(fish);
-      ball(fish, 0.045, goud, 0, 0, 0, 0.75).scale.x = 1.5; add(fish, new THREE.ConeGeometry(0.035, 0.06, 6), goud, -0.085, 0, 0).rotation.z = -Math.PI / 2;
+      ball(fish, 0.06, goud, 0, 0, 0, 0.75).scale.x = 1.5; add(fish, new THREE.ConeGeometry(0.045, 0.08, 6), goud, -0.11, 0, 0).rotation.z = -Math.PI / 2;
     },
     kool(g) { // de vaste lading van de Ape als er geen opdracht is
       const krat = M('#b98a52'), kool = M('#86b350', { flatShading: true }), geo = new THREE.IcosahedronGeometry(0.115, 1);
