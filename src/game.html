@@ -290,6 +290,13 @@ const MOBILE = matchMedia('(pointer: coarse)').matches || location.hash === '#to
 // ambient occlusion (alleen op de computer); alvast laden terwijl de wereld wordt opgebouwd
 const POST = !MOBILE && !/plat/.test(location.hash);
 const n8aoLoad = POST ? import('n8ao').then((m) => m.N8AOPass).catch(() => null) : null;
+// Hoeveel pixels we tekenen. Op een 4K- of 6K-scherm niet elk fysiek pixel: de nabewerking kost per pixel, en
+// opgeschaald met SMAA is het verschil nauwelijks te zien. qScale gaat omlaag als de beeldsnelheid zakt.
+let qScale = 1;
+function pickPixelRatio() {
+  const budget = POST ? 5.0e6 : MOBILE ? 3.0e6 : 8.0e6, css = Math.max(1, innerWidth * innerHeight);
+  return Math.max(0.5, Math.min(devicePixelRatio, MOBILE ? 1.5 : 2, Math.sqrt(budget / css)) * qScale);
+}
 // physics (Rapier, als WebAssembly); #simpel rijdt met de oude eenvoudige besturing
 const rapierLoad = /simpel/.test(location.hash) ? null : import('@dimforge/rapier3d-compat').then(async (m) => { const R = m.default ?? m; await R.init(); return R; }).catch((e) => { console.warn('Rapier niet geladen', e); return null; });
 
@@ -422,7 +429,7 @@ const canvas = $('scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, stencil: true, powerPreference: 'high-performance', logarithmicDepthBuffer: true });
 // grond en landgebruik worden niet getekend waar het watermasker staat, zodat je in de uitgegraven waterbak kijkt
 const SKIP_WATER = { stencilWrite: true, stencilRef: 1, stencilFunc: THREE.NotEqualStencilFunc, stencilFail: THREE.KeepStencilOp, stencilZFail: THREE.KeepStencilOp, stencilZPass: THREE.KeepStencilOp };
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, MOBILE ? 1.5 : 2));
+renderer.setPixelRatio(pickPixelRatio());
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -3768,7 +3775,8 @@ if (POST) {
   if (N8AOPass) {
     ao = new N8AOPass(scene, camera, innerWidth, innerHeight);
     // stencil voor het watermasker; transparantie overslaan scheelt twee extra keer de scène tekenen
-    Object.assign(ao.configuration, { stencil: true, transparencyAware: false, gammaCorrection: false, aoRadius: 2.6, distanceFalloff: 1.0, intensity: 3, aoSamples: 16, denoiseSamples: 8, denoiseRadius: 12 });
+    // op halve resolutie (met diepte-bewust opschalen): scheelt driekwart van de kosten en is nauwelijks te zien
+    Object.assign(ao.configuration, { stencil: true, transparencyAware: false, gammaCorrection: false, halfRes: true, aoRadius: 2.6, distanceFalloff: 1.0, intensity: 3, aoSamples: 16, denoiseSamples: 8, denoiseRadius: 12 });
     composer.addPass(ao); plain.enabled = false;
   }
   const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.32, 0.55, 1.05);
@@ -3778,31 +3786,27 @@ if (POST) {
   post = { composer, ao, plain, bloom };
   skyMat.uniforms.post.value = 1;
 }
-// minder nabewerking als de beeldsnelheid zakt: eerst de AO op halve resolutie, dan zonder AO, dan helemaal zonder
-function lowerPost(level) {
-  if (!post) return;
-  if (level === 1 && post.ao) post.ao.configuration.halfRes = true;
-  if (level === 2 && post.ao) { post.ao.enabled = false; post.plain.enabled = true; }
-  if (level >= 3) { post = null; skyMat.uniforms.post.value = 0; }
-}
+function shadowSize(n) { if (sun.shadow.mapSize.x > n) { sun.shadow.mapSize.set(n, n); sun.shadow.map?.dispose(); sun.shadow.map = null; } }
 
 // ------------------------------------------------------------------ hoofdlus
 let last = performance.now();
-// kwaliteit: zakt de beeldsnelheid, dan eerst minder pixels en daarna zachtere schaduwen uit
-let pixelRatio = Math.min(window.devicePixelRatio, MOBILE ? 1.5 : 2), perfAcc = 0, perfN = 0, perfLevel = 0, frameNo = 0;
+// kwaliteit: haalt het spel minder dan zo'n 48 beelden per seconde, dan stap voor stap lichter: eerst zonder AO,
+// dan minder pixels en kleinere schaduwen, dan zonder nabewerking, en als laatste nog minder pixels en minder ver zicht
+let perfAcc = 0, perfN = 0, perfLevel = 0, perfWarm = 90, frameNo = 0;
+const QUALITY = [
+  () => { if (post?.ao) { post.ao.enabled = false; post.plain.enabled = true; } },
+  () => { qScale = 0.82; shadowSize(2048); },
+  () => { if (post) { post = null; skyMat.uniforms.post.value = 0; } },
+  () => { qScale = 0.68; shadowSize(1024); scene.fog.far = 520; camera.far = 700; camera.updateProjectionMatrix(); },
+];
 function adaptQuality(dt) {
-  if (window.__ape?.fixedQuality) return; // voor tests in een trage headless browser
+  if (window.__ape?.fixedQuality || perfLevel >= QUALITY.length) return; // fixedQuality: voor tests in een trage headless browser
+  if (perfWarm > 0) { perfWarm--; return; } // de eerste beelden na het starten (shaders compileren) tellen niet mee
+  if (dt > 0.25) return; // tab weggeweest
   perfAcc += dt; perfN++;
-  if (perfAcc < 2) return;
+  if (perfAcc < 1.5) return;
   const avg = perfAcc / perfN; perfAcc = 0; perfN = 0;
-  if (avg > 0.026 && perfLevel < 3) {
-    perfLevel++;
-    if (pixelRatio > 1) pixelRatio = Math.max(1, pixelRatio - 0.5); else if (perfLevel >= 2) pixelRatio = 0.8;
-    if (perfLevel === 2 && SHADOW.size > 2048) { sun.shadow.mapSize.set(2048, 2048); sun.shadow.map?.dispose(); sun.shadow.map = null; }
-    if (perfLevel >= 3) { sun.shadow.mapSize.set(1024, 1024); sun.shadow.map?.dispose(); sun.shadow.map = null; scene.fog.far = 520; camera.far = 700; }
-    lowerPost(perfLevel);
-    renderer.setPixelRatio(pixelRatio); resize();
-  }
+  if (avg > 0.021) { QUALITY[perfLevel++](); resize(); perfWarm = 30; }
 }
 // één stap spel: rijden, politie, de klok van de dienst en bezorgen
 function step(dt, now) {
@@ -3921,7 +3925,7 @@ function endShift() {
 function prepareNext() { GAME.job = null; GAME.next = pickJob(W.start.x, W.start.z, true); showStartCard(); }
 
 function resize() {
-  const w = window.innerWidth, h = window.innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  const w = window.innerWidth, h = window.innerHeight; renderer.setPixelRatio(pickPixelRatio()); renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
   if (post) { post.composer.setPixelRatio(renderer.getPixelRatio()); post.composer.setSize(w, h); }
 }
 addEventListener('resize', resize); resize();
@@ -3960,7 +3964,7 @@ const boot = (data) => {
   requestAnimationFrame(frame);
 };
 window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
-window.__ape = { state, keys, routeFrom, DEST, camera, THREE, scene, bumpHeight, BUMPS, BUILD_SHAPES, TREES, pip, inWater, LIFE, COPS, TRAFFIC, PHYS, GAME, ADDRS, NODES, startShift, endShift, deliver, pickJob, startJob, get aerialLoaded() { return aerialLoaded; }, get post() { return post; }, get VEH() { return VEH; }, get frames() { return renderer.info.render.frame; },
+window.__ape = { state, keys, routeFrom, DEST, camera, THREE, scene, renderer, resize, sun, bumpHeight, BUMPS, BUILD_SHAPES, TREES, pip, inWater, LIFE, COPS, TRAFFIC, PHYS, GAME, ADDRS, NODES, startShift, endShift, deliver, pickJob, startJob, get aerialLoaded() { return aerialLoaded; }, get post() { return post; }, get VEH() { return VEH; }, get frames() { return renderer.info.render.frame; },
   sim(seconds, dt = 1 / 60) { let maxSus = 0, thumps = 0, events = []; const t0 = state.lastThump;
     for (let t = 0; t < seconds; t += dt) { drivePhysics(dt); if (state.event && !events.includes(state.event)) events.push(state.event); updateNav(dt); maxSus = Math.max(maxSus, Math.abs(state.susY)); if (state.lastThump !== t0) thumps++; }
     return { x: +state.x.toFixed(1), z: +state.z.toFixed(1), v: +(state.v * 3.6).toFixed(1), maxSus: +maxSus.toFixed(3), events, street: streetShown }; },
