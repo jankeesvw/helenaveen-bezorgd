@@ -113,7 +113,7 @@ body { margin: 0; background: #a9c6dc; color: var(--sign-white); font-family: va
 
 /* Start- en eindkaart: een ANWB-paddenstoel als wegwijzer */
 .overlay { position: fixed; inset: 0; display: flex; overflow-y: auto; touch-action: pan-y; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px; background: linear-gradient(180deg, rgba(21,33,44,.15), rgba(21,33,44,.55)); pointer-events: auto; }
-.card { margin: auto; width: min(520px, 100%); color: var(--ink); background: var(--sign-white); border-radius: 18px 18px 12px 12px; box-shadow: 0 20px 60px rgba(0,0,0,.45); overflow: hidden; }
+.card { margin: auto; width: min(520px, 100%); color: var(--ink); background: var(--sign-white); border-radius: 18px 18px 12px 12px; box-shadow: 0 20px 60px rgba(0,0,0,.45); overflow: hidden; overflow: clip; }
 .card .cap { background: var(--anwb-red); color: #fff; padding: 10px 22px 6px; font-weight: 800; font-size: 12px; letter-spacing: .2em; text-transform: uppercase; display: flex; justify-content: space-between; gap: 12px; }
 .card .body { padding: 18px 22px 22px; display: grid; gap: 14px; }
 .card h1 { margin: 0; font-weight: 900; font-style: italic; font-size: clamp(34px, 8vw, 52px); line-height: .95; letter-spacing: -0.01em; text-wrap: balance; color: var(--sign-blue); }
@@ -131,7 +131,19 @@ body { margin: 0; background: #a9c6dc; color: var(--sign-white); font-family: va
 .route { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: baseline; font-weight: 700; border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); padding: 8px 0 5px; }
 .route .ar { color: var(--anwb-red); font-weight: 900; }
 .route .km { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
-.keys { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 14px; }
+.sect { margin: 0 0 -8px; font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--anwb-red); }
+.lading { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.lading span { display: grid; justify-items: center; align-content: start; gap: 1px; padding: 5px 2px 4px; border: 1.5px solid rgba(21,33,44,.14); border-radius: 8px; background: #fff; text-align: center; }
+.lading svg { width: 30px; height: 23px; display: block; }
+.lading b { font-size: 12px; font-weight: 800; line-height: 1.1; }
+.lading small { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; line-height: 1.2; color: #5a6470; }
+.lading small.breekbaar { color: var(--anwb-red); } .lading small.haast { color: #b06a00; } .lading small.zwaar, .lading small.klotst { color: var(--sign-blue); } .lading small.fooi { color: var(--ape-green); }
+.warn { font-size: 14px !important; line-height: 1.4 !important; padding-left: 12px; border-left: 4px solid var(--anwb-red); }
+.go { position: sticky; bottom: -16px; z-index: 1; display: grid; margin: 0 -22px -22px; padding: 14px 22px calc(26px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(rgba(246,245,239,0), var(--sign-white) 30%); }
+/* op de computer: de toetsen in twee kolommen, zodat de kaart op een gewoon scherm past */
+body:not(.is-touch) .card { width: min(560px, 100%); }
+.keys { display: flex; flex-wrap: wrap; gap: 5px 16px; font-size: 14px; line-height: 1.3; }
+.keys .k { display: inline-flex; align-items: baseline; gap: 6px; }
 .keys kbd { font-family: var(--font-num); font-size: 12px; font-weight: 700; background: var(--ink); color: var(--sign-white); border-radius: 4px; padding: 2px 6px 1px; white-space: nowrap; justify-self: start; }
 .btn { appearance: none; border: 0; cursor: pointer; font: inherit; font-weight: 900; font-size: 20px; font-style: italic; letter-spacing: .01em; color: #fff; background: var(--ape-green); border-radius: 10px; padding: 14px 20px 10px; box-shadow: 0 4px 0 #2f6a29; transition: transform .08s; }
 .btn:hover { filter: brightness(1.06); }
@@ -187,7 +199,8 @@ body.is-touch .tilt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
   .minis { align-self: end; }
   body.is-touch .dash { bottom: calc(14px + env(safe-area-inset-bottom, 0px)); left: calc(max(16px, env(safe-area-inset-left, 0px)) + clamp(150px, 44vw, 270px) + 12px); }
   .card .body { gap: 10px; padding: 12px 18px 16px; }
-  .card .route, body.is-touch .touch-help { display: none; }
+  .card .route, body.is-touch .touch-help, .lading small { display: none; }
+  .go { margin: 0 -18px -16px; padding: 10px 18px calc(20px + env(safe-area-inset-bottom, 0px)); }
   .pick button svg { max-width: 54px; }
   .pick button small { display: none; }
   .card h1 { font-size: 30px; }
@@ -259,18 +272,30 @@ body.is-touch .tilt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
         <span class="ar">→</span><span id="firstAddr">Eerste adres</span><span class="km" id="routeKm"></span>
         <span class="ar">★</span><span id="bestLine">Beste dienst</span><span class="km" id="bestPts"></span>
       </div>
+      <h2 class="sect">Wat je bezorgt</h2>
+      <div class="lading" aria-label="Soorten lading">
+        <span><svg viewBox="0 0 32 24" aria-hidden="true"><path d="M5 9h22v13H5z" fill="#b98a52"/><path d="M3 5h26v5H3z" fill="#a5794a"/><path d="M14 5h4v17h-4z" fill="#e3cf9d"/></svg><b>Pakketje</b><small>gewoon</small></span>
+        <span><svg viewBox="0 0 32 24" aria-hidden="true"><path d="M16 2 28 20q-12 4-24 0z" fill="#f2c12e"/><path d="M5 18.5q11 4 22 0l1 1.5q-12 4-24 0z" fill="#c9955f"/><circle cx="14" cy="12" r="2.2" fill="#c41e2a"/><circle cx="19" cy="16" r="2" fill="#c41e2a"/><circle cx="11" cy="17" r="1.6" fill="#c41e2a"/></svg><b>Pizza's</b><small class="haast">haast</small></span>
+        <span><svg viewBox="0 0 32 24" aria-hidden="true"><path d="M3 14h26l-2 8H5z" fill="#b8b2a6"/><ellipse cx="9" cy="12" rx="3.4" ry="4.4" fill="#f2eee6" stroke="#cfc9bd"/><ellipse cx="16" cy="11" rx="3.4" ry="4.4" fill="#c9955f"/><ellipse cx="23" cy="12" rx="3.4" ry="4.4" fill="#f2eee6" stroke="#cfc9bd"/></svg><b>Eieren</b><small class="breekbaar">breekbaar</small></span>
+        <span><svg viewBox="0 0 32 24" aria-hidden="true"><rect x="5" y="15" width="22" height="7" rx="1" fill="#f7f1e8" stroke="#e88aa6" stroke-width="1.5"/><rect x="9.5" y="9" width="13" height="6" rx="1" fill="#f7f1e8" stroke="#e88aa6" stroke-width="1.5"/><rect x="15.4" y="4" width="1.2" height="5" fill="#15212c"/><ellipse cx="16" cy="3" rx="1.3" ry="1.8" fill="#f08a1a"/></svg><b>Taart</b><small class="breekbaar">breekbaar</small></span>
+        <span><svg viewBox="0 0 32 24" aria-hidden="true"><path d="M4 14q12-15 24 0z" fill="#e8dfcc" stroke="#b5a68a" stroke-width="1.2"/><rect x="12.5" y="14" width="7" height="8" rx="2.5" fill="#f4f1ea" stroke="#b5a68a" stroke-width="1.2"/></svg><b>Champignons</b><small>vers</small></span>
+        <span><svg viewBox="0 0 32 24" aria-hidden="true"><path d="M16 23V11M16 23 10 9M16 23l6-13" stroke="#3f7a35" stroke-width="1.6" fill="none"/><circle cx="16" cy="8" r="3.6" fill="#d8263a"/><circle cx="9.5" cy="7.5" r="3.2" fill="#f2c12e"/><circle cx="22.5" cy="8.5" r="3.2" fill="#e86aa0"/></svg><b>Bloemen</b><small class="fooi">extra fooi</small></span>
+        <span><svg viewBox="0 0 32 24" aria-hidden="true"><path d="M10 10h12v11.5a1.5 1.5 0 0 1-1.5 1.5h-9a1.5 1.5 0 0 1-1.5-1.5z" fill="#c9ccce"/><path d="M12.5 6h7l2.5 4H10z" fill="#aeb2b5"/><rect x="11.5" y="2.5" width="9" height="3.5" rx="1" fill="#8f959a"/></svg><b>Melkbussen</b><small class="zwaar">zwaar</small></span>
+        <span><svg viewBox="0 0 32 24" aria-hidden="true"><rect x="3" y="5" width="26" height="17" rx="1.5" fill="#d6ecf2" stroke="#2a2c2e" stroke-width="1.6"/><rect x="4" y="10" width="24" height="11" fill="#4f9fc8" opacity=".55"/><ellipse cx="14" cy="15" rx="4.2" ry="2.5" fill="#f08a1a"/><path d="M18 15l4.5-3v6z" fill="#f08a1a"/></svg><b>Aquarium</b><small class="klotst">klotst</small></span>
+      </div>
+      <p class="warn">Te hard waar de politie het ziet? Dan komen ze met zwaailicht achter je aan, en een aanhouding kost punten.</p>
       <div class="keys">
-        <kbd>↑ / W</kbd><span id="kGas">gas geven (de Ape haalt 45 km/u)</span>
-        <kbd>Shift</kbd><span id="kTurbo">opgevoerd: tot 70 km/u</span>
-        <kbd>↓ / S / spatie</kbd><span>remmen en achteruit</span>
-        <kbd>← → / A D</kbd><span id="kSteer">sturen; scherp sturen op snelheid kantelt hem</span>
-        <kbd>H</kbd><span>toeteren</span>
-        <kbd>C</kbd><span>camera: achter, cabine of hoog</span>
-        <kbd>R</kbd><span>terug op de weg</span>
+        <span class="k"><kbd>↑ / W</kbd><span id="kGas">gas geven (de Ape haalt 45 km/u)</span></span>
+        <span class="k"><kbd>Shift</kbd><span id="kTurbo">opgevoerd: tot 70 km/u</span></span>
+        <span class="k"><kbd>↓ / S / spatie</kbd><span>remmen en achteruit</span></span>
+        <span class="k"><kbd>← → / A D</kbd><span id="kSteer">sturen; scherp sturen op snelheid kantelt hem</span></span>
+        <span class="k"><kbd>H</kbd><span>toeteren</span></span>
+        <span class="k"><kbd>C</kbd><span>camera: achter, cabine of hoog</span></span>
+        <span class="k"><kbd>R</kbd><span>terug op de weg</span></span>
       </div>
       <p class="touch-help small">Schuif met je duim over het stuur links. Rechts zitten gas en rem. Met Snel rijd je opgevoerd, Cam wisselt de camera en Weg zet je terug op de weg. Liggend speelt het fijnst.</p>
-      <button class="btn" id="startBtn" type="button">Begin je dienst</button>
       <p class="credits">Kaart © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap-bijdragers</a> · gebouwen <a href="https://3dbag.nl" target="_blank" rel="noopener">3DBAG</a> (TU Delft, CC BY 4.0) · bomen <a href="https://www.ahn.nl" target="_blank" rel="noopener">AHN</a> · adressen en luchtfoto <a href="https://www.pdok.nl" target="_blank" rel="noopener">PDOK</a></p>
+      <div class="go"><button class="btn" id="startBtn" type="button">Begin je dienst</button></div>
     </div>
   </div>
 </div>
@@ -4084,7 +4109,7 @@ function showStartCard() {
 function chooseVehicle(id) {
   setVehicle(id); if (PHYS.ok) PHYS.setVehicle();
   $('startTitle').innerHTML = VEH.title;
-  $('introText').textContent = `Je ${VEH.desc} staat voor Soemeersingel 25. In een dienst van vijf minuten bezorg je zoveel mogelijk adressen in Helenaveen, steeds met iets anders: pizza's die warm moeten aankomen, eieren en een taart die niet mogen breken, melkbussen die zwaar zijn. Elk adres levert punten op, en hoe sneller je er bent, hoe meer fooi. Rij je te hard en ziet de politie het, dan komen ze met zwaailicht achter je aan. Schud ze af voor je weer kunt bezorgen, want houden ze je aan, dan kost de bekeuring punten.`;
+  $('introText').textContent = `Je ${VEH.desc} staat voor Soemeersingel 25. Bezorg in vijf minuten zoveel mogelijk adressen in Helenaveen: elk adres levert punten op, en hoe sneller je er bent, hoe meer fooi.`;
   $('kGas').textContent = VEH.gasText; $('kTurbo').textContent = VEH.turboText; $('kSteer').textContent = VEH.steerText;
   document.querySelectorAll('#pick button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.v === VEH.id)));
   try { localStorage.setItem('ape-koolweg-wagen', VEH.id); } catch (e) { /* geen opslag */ }
