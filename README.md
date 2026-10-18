@@ -17,6 +17,8 @@ Op de startkaart kies je je wagen; de beste dienst wordt per wagen bijgehouden.
 
 Een dienst duurt vijf minuten. Je krijgt steeds een willekeurig adres in het dorp, een van de bijna vierhonderd echte adressen uit de BAG; het paaltje met het huisnummer staat aan de stoep en een lichtbaken wijst het van ver aan. Sta je er stil, dan is het bezorgd en krijg je meteen het volgende adres. Elk adres levert punten op naar de afstand, plus fooi die wegloopt naarmate je er langer over doet.
 
+Elk adres krijgt een eigen lading, die in de laadbak van de Ape staat of op een imperiaal op het dak van de andere wagens. Een pakketje of champignons van de kwekerij zijn gewoon; pizza's leveren meer fooi op maar die loopt snel weg; eieren en een verjaardagstaart breken op bulten en bij klappen; uit een aquarium met een goudvis klotst het water als je hard remt of scherp stuurt; melkbussen zijn zwaar, zodat je minder snel optrekt, maar leveren meer op. Wat er kapot is gaat van de punten af.
+
 ## Politie
 
 Er rijden steeds twee witte politiewagens rond. Overal geldt de echte maximumsnelheid uit OpenStreetMap (veel 30 in het dorp, 60 erbuiten), die zie je naast je teller. Rij je meer dan 5 km/u te hard en ziet een politiewagen het, dan gaan zwaailicht en sirene aan en komen ze achter je aan, zoals in GTA. Hoe langer de achtervolging duurt, hoe meer sterren en hoe meer wagens; een politiewagen rammen helpt ook niet. Zolang ze achter je aan zitten kun je niet bezorgen. Blijf lang genoeg uit hun zicht (achter de huizen, of gewoon verder weg) en ze geven het op, wat je wat punten oplevert. Val je stil met een politiewagen tegen je aan, dan ben je aangehouden en kost de bekeuring 100 punten per ster.
