@@ -1122,6 +1122,26 @@ const MAT = {
 };
 const lak = (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.32, metalness: 0.12 });
 const add = (parent, geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); parent.add(m); return m; };
+// een hele groep in één geometrie met de kleur per hoekpunt: één draw call voor een hele wagen.
+// tag(mesh) geeft een getal per hoekpunt mee (lak die per wagen een andere kleur krijgt, lampen die oplichten)
+function bakeGroup(group, tag) {
+  group.updateMatrixWorld(true);
+  const inv = group.matrixWorld.clone().invert(), geos = [], mat = new THREE.Matrix4();
+  group.traverse((m) => {
+    if (!m.isMesh) return;
+    for (let o = m; o && o !== group; o = o.parent) if (!o.visible) return;
+    const g = (m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone()).applyMatrix4(mat.multiplyMatrices(inv, m.matrixWorld));
+    for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k);
+    const c = m.material.color, n = g.attributes.position.count, col = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    if (tag) g.setAttribute('tag', new THREE.BufferAttribute(new Float32Array(n).fill(tag(m)), 1));
+    geos.push(g);
+  });
+  // getagde delen achteraan, zodat een lamp aanzetten maar een klein stukje van de buffer ververst
+  if (tag) geos.sort((a, b) => a.attributes.tag.array[0] - b.attributes.tag.array[0]);
+  return mergeGeometries(geos);
+}
 // zijprofiel (px = afstand achter de neus, py = hoogte), geëxtrudeerd over de breedte, met de neus op noseZ
 function profileBody(shape, width, noseZ, bevel = 0.06) {
   const g = new THREE.ExtrudeGeometry(shape, { depth: width - 2 * bevel, bevelEnabled: true, bevelThickness: bevel, bevelSize: 0.05, bevelSegments: 4, curveSegments: 14 });
@@ -1793,7 +1813,7 @@ const LIFE = (() => {
     for (const rig of catRigs) if (rig.agent && Math.hypot(rig.agent.x - state.x, rig.agent.z - state.z) < 20 && rig.agent.state === 'sit') flee(rig.agent, 0);
     if (state.mode !== 'intro' && swanGroups.some((g) => Math.hypot(g.cx - state.x, g.cz - state.z) < g.a + 25)) { hiss(); showToast('Sssss!', 'de zwanen zijn niet onder de indruk', 1500); }
   }
-  return { update, honk, residents, walkers, cats, swanGroups, people, catRigs, free };
+  return { update, honk, residents, walkers, cats, swanGroups, people, catRigs, free, PG, personLook, withColor, paint, lifeMat };
 })();
 
 // ------------------------------------------------------------------ route: Dijkstra over het wegennet
@@ -1863,6 +1883,54 @@ function routeFrom(x, z) {
   return { path, dist: best.tot - best.off * 0.5 + Math.hypot(NODES[DEST.node][0] - DEST.gate[0], NODES[DEST.node][1] - DEST.gate[1]) };
 }
 
+// ------------------------------------------------------------------ wagens over het wegennet (politie en verkeer)
+const ek = (a, b) => a * 100000 + b, EDGE = new Map();
+ROADS.forEach((r) => { if (r.d) for (let i = 0; i < r.n.length - 1; i++) { EDGE.set(ek(r.n[i], r.n[i + 1]), r); EDGE.set(ek(r.n[i + 1], r.n[i]), r); } });
+const wrap = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+// zicht: geen gebouw tussen a en b (om de 3 m gekeken); rechtstreeks rijden kan ook niet door het water
+function sight(ax, az, bx, bz) {
+  const n = Math.floor(Math.hypot(bx - ax, bz - az) / 3);
+  for (let k = 1; k < n; k++) { const x = ax + (bx - ax) * k / n, z = az + (bz - az) * k / n; for (const bi of buildGrid.near(x, z)) if (pip(x, z, BUILD_SHAPES[bi])) return false; }
+  return true;
+}
+function open(ax, az, bx, bz) {
+  if (!sight(ax, az, bx, bz)) return false;
+  const n = Math.floor(Math.hypot(bx - ax, bz - az) / 2.5);
+  for (let k = 1; k < n; k++) { const x = ax + (bx - ax) * k / n, z = az + (bz - az) * k / n; if (inWater(x, z) && !roadAt(x, z)) return false; }
+  return true;
+}
+const tv = new THREE.Vector3();
+function inView(x, z) { // staat het punt in beeld? dan zetten we daar niet ineens een wagen neer
+  const cx = camera.position.x, cz = camera.position.z, dx = x - cx, dz = z - cz, d = Math.hypot(dx, dz);
+  if (d > 320) return false; if (d < 25) return true;
+  camera.getWorldDirection(tv);
+  return (dx * tv.x + dz * tv.z) / (d * (Math.hypot(tv.x, tv.z) || 1)) > 0.4 && sight(cx, cz, x, z);
+}
+// prev is de laatst gepasseerde knoop, route de knopen die nog komen
+function advance(c) {
+  while (c.route.length) {
+    const [nx, nz] = NODES[c.route[0]], s = segDist(c.x, c.z, c.prev[0], c.prev[1], nx, nz);
+    if (s.t < 0.999 && Math.hypot(nx - c.x, nz - c.z) > 3) break;
+    c.prevNode = c.route.shift(); c.prev = [nx, nz];
+  }
+}
+// doelpunt op de route, `look` meter vooruit, lane(r, c) meter rechts van het midden van de weg
+function follow(c, look, lane) {
+  let ax = c.prev[0], az = c.prev[1], from = c.prevNode;
+  const [b0x, b0z] = NODES[c.route[0]], s0 = segDist(c.x, c.z, ax, az, b0x, b0z);
+  let px = s0.x, pz = s0.z, rem = look;
+  for (let k = 0; k < c.route.length; k++) {
+    const n = c.route[k], [bx, bz] = NODES[n], L = Math.hypot(bx - px, bz - pz), last = k === c.route.length - 1;
+    if (L >= rem || last) {
+      const f = L > 1e-6 ? Math.min(1, rem / L) : 0, sx = bx - ax, sz = bz - az, SL = Math.hypot(sx, sz) || 1;
+      const r = EDGE.get(ek(from, n)), off = r ? lane(r, c) : 0;
+      return { x: px + (bx - px) * f - (sz / SL) * off, z: pz + (bz - pz) * f + (sx / SL) * off, end: last && L < rem, r, dx: sx / SL, dz: sz / SL };
+    }
+    rem -= L; px = ax = bx; pz = az = bz; from = n;
+  }
+}
+
 // ------------------------------------------------------------------ politie
 // Er rijden steeds twee politiewagens in de buurt rond. Zien ze je te hard rijden, dan gaan zwaailicht en
 // sirene aan en komen ze achter je aan, zoals in GTA: hoe langer het duurt, hoe meer sterren en hoe meer
@@ -1870,12 +1938,8 @@ function routeFrom(x, z) {
 // dan ben je aangehouden en kost de bekeuring punten.
 const COPS = (() => {
   const NP = 2, MAXC = MOBILE ? 2 : 3, SIGHT = 60, SIGHT_CHASE = 120;
-  const ek = (a, b) => a * 100000 + b, EDGE = new Map();
-  ROADS.forEach((r) => { if (r.d) for (let i = 0; i < r.n.length - 1; i++) { EDGE.set(ek(r.n[i], r.n[i + 1]), r); EDGE.set(ek(r.n[i + 1], r.n[i]), r); } });
   // plekken om een wagen neer te zetten: knopen aan verharde weg, binnen de kaart
   const SPOTS = [...GRAPH.keys()].filter((n) => { const [x, z] = NODES[n]; return x > BX0 + 40 && x < BX1 - 40 && z > BZ0 + 40 && z < BZ1 - 40 && GRAPH.get(n).some(([m]) => !EDGE.get(ek(n, m)).u); });
-  const wrap = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const dist = (c) => Math.hypot(c.x - state.x, c.z - state.z);
 
   // ---- het model: een witte stationwagen met een blauwe band, POLITIE op de flanken en een lichtbalk
@@ -1905,25 +1969,12 @@ const COPS = (() => {
       for (const z of [2.67, 3.57]) { add(tmp, new THREE.BoxGeometry(0.012, 0.3, 0.012), black, s * 0.874, 0.5, NOSE + z); add(tmp, new THREE.BoxGeometry(0.012, 0.06, 0.012), black, s * 0.874, 0.93, NOSE + z); } // deurnaden boven en onder de band
     }
     add(tmp, new THREE.BoxGeometry(1.26, 0.06, 0.32), black, 0, 1.5, NOSE + 2.25);
-    // alles in één geometrie met de kleur per hoekpunt: één draw call voor de hele carrosserie
-    const bake = (group) => {
-      group.updateMatrixWorld(true); const geos = [];
-      group.traverse((m) => {
-        if (!m.isMesh) return;
-        const g = (m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone()).applyMatrix4(m.matrixWorld);
-        for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k);
-        const c = m.material.color, n = g.attributes.position.count, col = new Float32Array(n * 3);
-        for (let i = 0; i < n; i++) { col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; }
-        g.setAttribute('color', new THREE.BufferAttribute(col, 3)); geos.push(g);
-      });
-      return mergeGeometries(geos);
-    };
-    const body = bake(tmp);
+    const body = bakeGroup(tmp);
     const wg = new THREE.Group();
     const tyre = new THREE.CylinderGeometry(wr, wr, 0.2, 18); tyre.rotateZ(Math.PI / 2); add(wg, tyre, black, 0, 0, 0);
     const hub = new THREE.CylinderGeometry(0.18, 0.18, 0.206, 12); hub.rotateZ(Math.PI / 2); add(wg, hub, grey, 0, 0, 0);
     add(wg, new THREE.BoxGeometry(0.212, 0.05, 0.3), black, 0, 0, 0);
-    const wheel = bake(wg);
+    const wheel = bakeGroup(wg);
     // blauwe band met POLITIE, eronder een oranjerode streep, schuine strepen aan de uiteinden
     const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 64; const g = cv.getContext('2d');
     const liveryTex = new THREE.CanvasTexture(cv); liveryTex.colorSpace = THREE.SRGBColorSpace; liveryTex.anisotropy = 4;
@@ -1972,26 +2023,6 @@ const COPS = (() => {
   }
   for (let i = 0; i < NP; i++) makeCar();
 
-  // ---- zicht: geen gebouw tussen a en b (om de 3 m gekeken); rechtstreeks rijden kan ook niet door het water
-  function sight(ax, az, bx, bz) {
-    const n = Math.floor(Math.hypot(bx - ax, bz - az) / 3);
-    for (let k = 1; k < n; k++) { const x = ax + (bx - ax) * k / n, z = az + (bz - az) * k / n; for (const bi of buildGrid.near(x, z)) if (pip(x, z, BUILD_SHAPES[bi])) return false; }
-    return true;
-  }
-  function open(ax, az, bx, bz) {
-    if (!sight(ax, az, bx, bz)) return false;
-    const n = Math.floor(Math.hypot(bx - ax, bz - az) / 2.5);
-    for (let k = 1; k < n; k++) { const x = ax + (bx - ax) * k / n, z = az + (bz - az) * k / n; if (inWater(x, z) && !roadAt(x, z)) return false; }
-    return true;
-  }
-  const tv = new THREE.Vector3();
-  function inView(x, z) { // staat het punt in beeld? dan zetten we daar niet ineens een wagen neer
-    const cx = camera.position.x, cz = camera.position.z, dx = x - cx, dz = z - cz, d = Math.hypot(dx, dz);
-    if (d > 320) return false; if (d < 25) return true;
-    camera.getWorldDirection(tv);
-    return (dx * tv.x + dz * tv.z) / (d * (Math.hypot(tv.x, tv.z) || 1)) > 0.4 && sight(cx, cz, x, z);
-  }
-
   // ---- rijden over het wegennet: prev is de laatst gepasseerde knoop, route de knopen die nog komen
   function place(c, n) {
     const [x, z] = NODES[n];
@@ -2031,30 +2062,8 @@ const COPS = (() => {
       c.route.push(n);
     }
   }
-  function advance(c) {
-    while (c.route.length) {
-      const [nx, nz] = NODES[c.route[0]], s = segDist(c.x, c.z, c.prev[0], c.prev[1], nx, nz);
-      if (s.t < 0.999 && Math.hypot(nx - c.x, nz - c.z) > 3) break;
-      c.prevNode = c.route.shift(); c.prev = [nx, nz];
-    }
-  }
   // rechts houden; in de achtervolging meer naar het midden
   const laneOf = (r, c) => (c.mode === 'chase' ? 0.3 : 1) * (r.w >= 4.4 ? r.w * 0.25 : r.w >= 3.2 ? 0.55 : 0);
-  // doelpunt op de route, `look` meter vooruit
-  function follow(c, look) {
-    let ax = c.prev[0], az = c.prev[1], from = c.prevNode;
-    const [b0x, b0z] = NODES[c.route[0]], s0 = segDist(c.x, c.z, ax, az, b0x, b0z);
-    let px = s0.x, pz = s0.z, rem = look;
-    for (let k = 0; k < c.route.length; k++) {
-      const n = c.route[k], [bx, bz] = NODES[n], L = Math.hypot(bx - px, bz - pz), last = k === c.route.length - 1;
-      if (L >= rem || last) {
-        const f = L > 1e-6 ? Math.min(1, rem / L) : 0, sx = bx - ax, sz = bz - az, SL = Math.hypot(sx, sz) || 1;
-        const r = EDGE.get(ek(from, n)), lane = r ? laneOf(r, c) : 0;
-        return { x: px + (bx - px) * f - (sz / SL) * lane, z: pz + (bz - pz) * f + (sx / SL) * lane, end: last && L < rem, r };
-      }
-      rem -= L; px = ax = bx; pz = az = bz; from = n;
-    }
-  }
   function drive(c, dt) {
     const chase = c.mode === 'chase';
     // in de achtervolging wat langzamer dan jouw wagen op zijn hardst: met plankgas en scherpe bochten kun je ze kwijtraken
@@ -2072,12 +2081,13 @@ const COPS = (() => {
       if (c.route.length < 2 && (!chase || c.search)) extend(c, c.search ? lastKnown.x : state.x, c.search ? lastKnown.z : state.z, c.search ? 0.6 : c.mode === 'patrol' ? 0.35 : 0);
       if (!c.route.length) { vd = 0; tx = c.x - Math.sin(c.h); tz = c.z - Math.cos(c.h); }
       else {
-        const near = follow(c, 4 + c.v * 0.55), far = follow(c, 16 + c.v * 1.3);
+        const near = follow(c, 4 + c.v * 0.55, laneOf), far = follow(c, 16 + c.v * 1.3, laneOf);
         if (near.r) { c.limit = near.r.v || 50; if (near.r.u) cruise *= 0.88; }
         tx = near.x; tz = near.z;
         const fd = Math.abs(wrap(Math.atan2(-(far.x - c.x), -(far.z - c.z)) - c.h));
         vd = cruise * (fd > 1.1 ? 0.32 : fd > 0.6 ? 0.55 : fd > 0.3 ? 0.8 : 1);
         if (far.end) vd = Math.min(vd, Math.max(0, Math.hypot(far.x - c.x, far.z - c.z) - 3) * 0.7);
+        if (!chase) vd = Math.min(vd, c.tlim ?? Infinity); // op patrouille remmen ze voor het verkeer
       }
     }
     const diff = wrap(Math.atan2(-(tx - c.x), -(tz - c.z)) - c.h);
@@ -2296,7 +2306,9 @@ const COPS = (() => {
     active = false; $('wanted').hidden = true; $('flash').hidden = true; hudKey = '';
     if (siren && audio) siren.g.gain.setTargetAtTime(0, audio.ctx.currentTime, 0.05);
   }
-  return { update, reset, stop, release: (now) => calmDown(now, 8000), cars, sight, get wanted() { return wanted; },
+  // het verkeer meldt een aanrijding: ziet een politiewagen op patrouille het, dan gaan ze erachteraan
+  function report(now, why) { if (!active || wanted || now < grace) return; const c = cars.find((o) => o.mode === 'patrol' && o.sees); if (c) startChase(c, now, why); }
+  return { update, reset, stop, report, laneOf, release: (now) => calmDown(now, 8000), cars, sight, get wanted() { return wanted; },
     // afstand van jouw achteras tot de achterbumper van een politiewagen die vlak achter je rijdt (0 als er geen is)
     get behind() {
       if (!active || !wanted) return 0;
@@ -2308,6 +2320,665 @@ const COPS = (() => {
       }
       return best;
     }, get debug() { return { wanted, lastSeen, chaseT, bustT, minGap, grace }; } };
+})();
+
+// ------------------------------------------------------------------ verkeer: tegenliggers, fietsers en trekkers
+// Om je heen rijden auto's, bestelbussen, trekkers en fietsers over het wegennet, en een flink deel komt je over je
+// route tegemoet. Ze houden rechts, remmen voor wat er voor ze rijdt, wijken uit op smalle weggetjes, halen een fietser
+// of trekker in als de weg vrij is en gaan opzij voor zwaailichten. Sta je stil in de weg, dan toeteren ze.
+const TRAFFIC = (() => {
+  const NCAR = MOBILE ? 7 : 12, NBIKE = MOBILE ? 3 : 6;
+  const rnd = Math.random, pick = (a) => a[Math.floor(rnd() * a.length)];
+
+  // ---- modellen: oorsprong midden achteras op de grond, rijrichting -z (zoals de politiewagen)
+  const C = (hex) => new THREE.MeshStandardMaterial({ color: hex });
+  const PAINT = C('#ffffff'), SECOND = C('#ffffff'), black = C('#1b1d1f'), dark = C('#3a3d40'), grey = C('#8d9196');
+  const head = C('#fff6dc'), tail = C('#b01414'), indL = C('#ff9a1a'), indR = C('#ff9a1a'), beacon = C('#ff8a00');
+  // per hoekpunt: 0 vast, 1 lak, 2 koplamp, 3 achterlicht, 4 knipperlicht links, 5 rechts, 6 zwaailamp, 7 tweede kleur
+  const TAGS = new Map([[PAINT, 1], [head, 2], [tail, 3], [indL, 4], [indR, 5], [beacon, 6], [SECOND, 7]]);
+  const tagOf = (m) => TAGS.get(m.material) || 0;
+  const tube = (g, a, b, r, mat) => {
+    const d = new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]), m = add(g, new THREE.CylinderGeometry(r, r, d.length(), 6), mat, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); return m;
+  };
+  // carrosserie uit een zijprofiel, met bumpers, lampen en spiegels
+  function car({ shape, L, W, wb, fr, wr, tyreW, headY, tailY, mirror, glass, extra, acc }) {
+    const g = new THREE.Group(), NOSE = -(wb + fr), hw = W / 2;
+    add(g, profileBody(shape(L, wr, fr, fr + wb), W, NOSE, 0.07), PAINT, 0, 0, 0);
+    add(g, new THREE.BoxGeometry(W - 0.25, 0.12, L - 0.9), black, 0, 0.27, NOSE + L / 2);
+    glass(g, NOSE, hw);
+    const FRONT = NOSE - 0.055, REAR = NOSE + L + 0.055; // de afschuining van het profiel steekt 5 cm uit
+    for (const z of [NOSE - 0.03, NOSE + L + 0.03]) add(g, new THREE.BoxGeometry(W + 0.03, 0.16, 0.12), dark, 0, 0.42, z);
+    add(g, new THREE.BoxGeometry(W * 0.42, 0.13, 0.04), black, 0, headY - 0.04, FRONT);
+    for (const s of [-1, 1]) {
+      add(g, new THREE.BoxGeometry(0.3, 0.11, 0.04), head, s * (hw - 0.26), headY, FRONT);
+      add(g, new THREE.BoxGeometry(0.1, 0.06, 0.04), s < 0 ? indL : indR, s * (hw - 0.09), headY - 0.14, FRONT);
+      add(g, new THREE.BoxGeometry(0.24, 0.13, 0.04), tail, s * (hw - 0.2), tailY, REAR);
+      add(g, new THREE.BoxGeometry(0.1, 0.06, 0.04), s < 0 ? indL : indR, s * (hw - 0.2), tailY - 0.12, REAR);
+      add(g, new THREE.BoxGeometry(0.07, 0.11, 0.17), black, s * (hw + 0.06), mirror[1], NOSE + mirror[0]);
+    }
+    extra?.(g, NOSE, hw);
+    const geo = bakeGroup(g, tagOf), tx = hw - 0.14;
+    return { geo, nose: wb + fr, tail: L - wb - fr, hw, wb, acc, wheels: [[-tx, 0, wr, tyreW, 0], [tx, 0, wr, tyreW, 0], [-tx, -wb, wr, tyreW, 1], [tx, -wb, wr, tyreW, 1]] };
+  }
+  const arches = (p, wr, fw, rw) => { const R = wr + 0.05; p.lineTo(rw + R, wr); p.absarc(rw, wr, R, 0, Math.PI, false); p.lineTo(fw + R, wr); p.absarc(fw, wr, R, 0, Math.PI, false); p.lineTo(0.1, wr); };
+  const MODELS = {
+    // hatchback, zoals een Polo of een Golf
+    hatch: car({
+      L: 4.1, W: 1.76, wb: 2.55, fr: 0.84, wr: 0.31, tyreW: 0.2, headY: 0.7, tailY: 0.8, mirror: [1.3, 1.02], acc: 2.1,
+      shape: (L, wr, fw, rw) => {
+        const p = new THREE.Shape();
+        p.moveTo(0.1, wr); p.quadraticCurveTo(-0.02, 0.32, 0.0, 0.52); p.lineTo(0.03, 0.78); p.quadraticCurveTo(0.08, 0.9, 0.35, 0.92);
+        p.lineTo(1.2, 1.0); p.lineTo(1.9, 1.42); p.quadraticCurveTo(1.98, 1.48, 2.15, 1.48); p.lineTo(3.45, 1.46); p.quadraticCurveTo(3.75, 1.45, 3.88, 1.32);
+        p.lineTo(4.06, 1.0); p.quadraticCurveTo(L, 0.95, L, 0.85); p.lineTo(L, 0.45); p.quadraticCurveTo(L, wr, L - 0.14, wr);
+        arches(p, wr, fw, rw); return p;
+      },
+      glass: (g, NOSE, hw) => {
+        slopedGlass(g, [1.22, 1.01], [1.89, 1.41], 1.5, NOSE, 0.075);
+        slopedGlass(g, [3.89, 1.31], [4.05, 1.03], 1.36, NOSE, 0.06);
+        sideGlass(g, [[1.33, 1.03], [1.93, 1.4], [2.7, 1.41], [2.7, 1.03]], hw, NOSE);
+        sideGlass(g, [[2.8, 1.03], [2.8, 1.41], [3.45, 1.41], [3.8, 1.06]], hw, NOSE);
+      },
+      extra: (g, NOSE, hw) => { for (const s of [-1, 1]) add(g, new THREE.BoxGeometry(0.012, 0.42, 0.012), black, s * (hw + 0.004), 0.68, NOSE + 2.75); },
+    }),
+    // stationwagen, het profiel van de politiewagen
+    estate: car({
+      L: 4.5, W: 1.76, wb: 2.64, fr: 0.84, wr: 0.31, tyreW: 0.2, headY: 0.68, tailY: 0.86, mirror: [1.42, 1.03], acc: 2.0,
+      shape: (L, wr, fw, rw) => {
+        const p = new THREE.Shape();
+        p.moveTo(0.1, wr); p.quadraticCurveTo(-0.02, 0.32, 0.0, 0.52); p.lineTo(0.02, 0.8); p.quadraticCurveTo(0.06, 0.88, 0.3, 0.89);
+        p.lineTo(1.27, 0.94); p.lineTo(1.78, 1.38); p.quadraticCurveTo(1.86, 1.44, 2.0, 1.44); p.lineTo(4.3, 1.44); p.quadraticCurveTo(4.44, 1.44, 4.46, 1.34);
+        p.lineTo(L, 0.98); p.lineTo(L, 0.45); p.quadraticCurveTo(L, wr, L - 0.14, wr);
+        arches(p, wr, fw, rw); return p;
+      },
+      glass: (g, NOSE, hw) => {
+        slopedGlass(g, [1.29, 0.96], [1.77, 1.37], 1.5, NOSE, 0.075);
+        slopedGlass(g, [4.47, 1.33], [4.5, 1.0], 1.44, NOSE, 0.06);
+        sideGlass(g, [[1.4, 0.98], [1.82, 1.36], [2.62, 1.36], [2.62, 0.98]], hw, NOSE);
+        sideGlass(g, [[2.72, 0.98], [2.72, 1.36], [3.52, 1.36], [3.52, 0.98]], hw, NOSE);
+        sideGlass(g, [[3.62, 0.98], [3.62, 1.36], [4.36, 1.36], [4.42, 0.98]], hw, NOSE);
+      },
+      extra: (g, NOSE, hw) => { for (const s of [-1, 1]) { add(g, new THREE.BoxGeometry(0.03, 0.04, 2.6), dark, s * 0.6, 1.47, NOSE + 3.0); for (const z of [2.67, 3.57]) add(g, new THREE.BoxGeometry(0.012, 0.42, 0.012), black, s * (hw + 0.004), 0.68, NOSE + z); } },
+    }),
+    // bestelbus
+    van: car({
+      L: 4.95, W: 1.9, wb: 3.0, fr: 0.95, wr: 0.33, tyreW: 0.22, headY: 0.86, tailY: 1.05, mirror: [1.1, 1.5], acc: 1.6,
+      shape: (L, wr, fw, rw) => {
+        const p = new THREE.Shape();
+        p.moveTo(0.1, wr); p.quadraticCurveTo(-0.02, 0.34, 0.0, 0.56); p.lineTo(0.04, 0.92); p.quadraticCurveTo(0.1, 1.04, 0.4, 1.06);
+        p.lineTo(0.95, 1.14); p.lineTo(1.55, 1.86); p.quadraticCurveTo(1.64, 1.96, 1.85, 1.96); p.lineTo(L - 0.12, 1.96); p.quadraticCurveTo(L, 1.96, L, 1.84);
+        p.lineTo(L, 0.5); p.quadraticCurveTo(L, wr, L - 0.14, wr);
+        arches(p, wr, fw, rw); return p;
+      },
+      glass: (g, NOSE, hw) => {
+        slopedGlass(g, [0.97, 1.16], [1.54, 1.84], 1.7, NOSE, 0.075);
+        sideGlass(g, [[1.08, 1.2], [1.6, 1.84], [2.15, 1.84], [2.15, 1.2]], hw, NOSE);
+        for (const s of [-1, 1]) add(g, new THREE.PlaneGeometry(0.66, 0.46), MAT.glass, s * 0.42, 1.58, NOSE + 4.95 + 0.06);
+      },
+      extra: (g, NOSE, hw) => {
+        add(g, new THREE.BoxGeometry(0.012, 1.55, 0.012), black, 0, 1.12, NOSE + 4.95 + 0.06);
+        for (const z of [2.25, 3.4]) add(g, new THREE.BoxGeometry(0.012, 1.5, 0.012), black, hw + 0.004, 1.08, NOSE + z);
+        add(g, new THREE.BoxGeometry(0.012, 1.0, 0.012), black, -(hw + 0.004), 1.0, NOSE + 2.25);
+        add(g, new THREE.BoxGeometry(0.012, 0.014, 1.2), grey, hw + 0.012, 1.84, NOSE + 2.9);
+      },
+    }),
+  };
+  // trekker: grote achterwielen onder een cabine met veel glas, een lange motorkap en een oranje zwaailamp
+  const glassT = [];
+  MODELS.tractor = (() => {
+    const g = new THREE.Group(), skin = C('#e0b090'), shirt = C('#3f5a7a');
+    add(g, new THREE.BoxGeometry(0.62, 0.5, 2.3), dark, 0, 0.86, -1.55);
+    add(g, new THREE.BoxGeometry(0.86, 0.62, 2.0), PAINT, 0, 1.33, -1.75);
+    add(g, new THREE.BoxGeometry(0.8, 0.56, 0.04), dark, 0, 1.3, -2.76);
+    for (const s of [-1, 1]) add(g, new THREE.BoxGeometry(0.16, 0.1, 0.04), head, s * 0.27, 1.46, -2.785);
+    add(g, new THREE.BoxGeometry(0.76, 0.42, 0.3), SECOND, 0, 0.75, -2.88);
+    add(g, new THREE.BoxGeometry(1.48, 0.12, 0.14), dark, 0, 0.47, -2.35);
+    add(g, new THREE.BoxGeometry(1.3, 0.1, 1.3), dark, 0, 1.15, -0.1);
+    for (const [x, z] of [[-0.64, -0.74], [0.64, -0.74], [-0.64, 0.54], [0.64, 0.54]]) add(g, new THREE.BoxGeometry(0.07, 1.45, 0.07), black, x, 1.92, z);
+    add(g, new THREE.BoxGeometry(1.5, 0.12, 1.5), SECOND, 0, 2.7, -0.1);
+    for (const s of [-1, 1]) add(g, new THREE.BoxGeometry(0.14, 0.08, 0.06), head, s * 0.45, 2.66, -0.86);
+    add(g, new THREE.BoxGeometry(0.45, 0.1, 0.45), dark, 0, 1.55, 0.12); add(g, new THREE.BoxGeometry(0.45, 0.5, 0.08), dark, 0, 1.82, 0.34);
+    add(g, new THREE.CapsuleGeometry(0.18, 0.3, 4, 8), shirt, 0, 1.92, 0.14); add(g, new THREE.SphereGeometry(0.115, 12, 8), skin, 0, 2.3, 0.1);
+    add(g, new THREE.CylinderGeometry(0.125, 0.13, 0.07, 12), C('#2a3a2a'), 0, 2.4, 0.11);
+    add(g, new THREE.TorusGeometry(0.17, 0.02, 6, 16), black, 0, 1.86, -0.3).rotation.x = -1.0;
+    for (const s of [-1, 1]) {
+      const f = new THREE.CylinderGeometry(0.9, 0.9, 0.52, 20, 1, true, -0.15, Math.PI - 0.35); f.rotateZ(Math.PI / 2);
+      add(g, f, PAINT, s * 0.92, 0.8, 0);
+      add(g, new THREE.BoxGeometry(0.1, 0.05, 0.3), dark, s * 0.72, 0.62, -0.72); add(g, new THREE.BoxGeometry(0.1, 0.05, 0.3), dark, s * 0.72, 0.95, -0.72);
+      add(g, new THREE.BoxGeometry(0.12, 0.12, 0.05), tail, s * 1.08, 1.3, 0.62);
+      add(g, new THREE.BoxGeometry(0.12, 0.07, 0.05), s < 0 ? indL : indR, s * 1.08, 1.44, 0.62);
+      add(g, new THREE.BoxGeometry(0.06, 0.07, 0.07), s < 0 ? indL : indR, s * 0.68, 2.5, -0.78);
+    }
+    add(g, new THREE.BoxGeometry(0.3, 0.4, 0.62), PAINT, -0.56, 0.95, -0.92);
+    add(g, new THREE.CylinderGeometry(0.05, 0.05, 1.15, 8), black, 0.34, 2.18, -1.3);
+    add(g, new THREE.BoxGeometry(0.9, 0.1, 0.1), dark, 0, 0.55, 0.78); add(g, new THREE.BoxGeometry(0.12, 0.08, 0.4), dark, 0, 0.5, 0.75);
+    add(g, new THREE.CylinderGeometry(0.075, 0.075, 0.13, 10), beacon, 0.5, 2.83, 0.35);
+    // ruiten: één doorzichtige geometrie voor alle trekkers
+    const gl = (w, h, x, y, z, ry) => { const p = new THREE.PlaneGeometry(w, h); p.rotateY(ry); p.translate(x, y, z); glassT.push(p); };
+    gl(1.22, 1.35, 0, 1.93, -0.74, 0); gl(1.22, 1.2, 0, 2.0, 0.54, 0); gl(1.22, 1.35, -0.64, 1.93, -0.1, Math.PI / 2); gl(1.22, 1.35, 0.64, 1.93, -0.1, Math.PI / 2);
+    return { geo: bakeGroup(g, tagOf), nose: 2.95, tail: 0.85, hw: 1.15, wb: 2.35, acc: 0.9, beacon: true,
+      wheels: [[-0.92, 0, 0.8, 0.46, 0], [0.92, 0, 0.8, 0.46, 0], [-0.78, -2.35, 0.48, 0.28, 1], [0.78, -2.35, 0.48, 0.28, 1]] };
+  })();
+  const glassTGeo = mergeGeometries(glassT), glassTMat = new THREE.MeshStandardMaterial({ color: '#9fb4bc', roughness: 0.05, metalness: 0.3, transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false });
+  // aanhanger achter de trekker; oorsprong midden as, de dissel wijst naar voren
+  const TOW = 3.0, HITCH = 0.95;
+  const trailerModel = (load) => {
+    const g = new THREE.Group(), wood = C('#7a6248');
+    add(g, new THREE.BoxGeometry(1.9, 0.1, 3.3), wood, 0, 0.95, -0.35);
+    add(g, new THREE.BoxGeometry(1.6, 0.16, 3.1), dark, 0, 0.83, -0.35);
+    for (const s of [-1, 1]) { add(g, new THREE.BoxGeometry(0.05, 0.42, 3.3), PAINT, s * 0.95, 1.21, -0.35); tube(g, [s * 0.5, 0.82, -1.95], [0, 0.56, -TOW], 0.05, dark); }
+    for (const z of [-2.0, 1.3]) add(g, new THREE.BoxGeometry(1.9, 0.42, 0.05), PAINT, 0, 1.21, z);
+    for (const s of [-1, 1]) {
+      const f = new THREE.CylinderGeometry(0.5, 0.5, 0.34, 14, 1, true, 0.2, Math.PI - 0.4); f.rotateZ(Math.PI / 2); add(g, f, dark, s * 0.95, 0.45, 0);
+      add(g, new THREE.BoxGeometry(0.16, 0.1, 0.04), tail, s * 0.78, 0.82, 1.34);
+      add(g, new THREE.BoxGeometry(0.1, 0.07, 0.04), s < 0 ? indL : indR, s * 0.6, 0.82, 1.34);
+    }
+    if (load === 'kratten') { // kratten champignons
+      const crate = C('#a5814f'), mush = C('#efe7d6');
+      for (let ix = 0; ix < 3; ix++) for (let iz = 0; iz < 5; iz++) for (let iy = 0; iy < 2; iy++) {
+        const x = -0.6 + ix * 0.6, z = -1.7 + iz * 0.62, y = 1.18 + iy * 0.3;
+        add(g, new THREE.BoxGeometry(0.56, 0.28, 0.58), crate, x, y, z); if (iy) add(g, new THREE.BoxGeometry(0.5, 0.04, 0.52), mush, x, y + 0.14, z);
+      }
+    } else { const heap = new THREE.SphereGeometry(1, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2); heap.scale(0.88, 0.5, 1.55); add(g, heap, C('#5a4632'), 0, 1.0, -0.35); }
+    return { geo: bakeGroup(g, tagOf), nose: TOW + 0.1, tail: 1.4, hw: 0.98, wheels: [[-0.95, 0, 0.42, 0.28, 0], [0.95, 0, 0.42, 0.28, 0]] };
+  };
+  // fiets, een zwarte of gekleurde stadsfiets; oorsprong onder de achteras
+  const BIKE = (() => {
+    const g = new THREE.Group(), R = [0, 0.34, 0], F = [0, 0.34, -1.12], BB = [0, 0.3, -0.5], SC = [0, 0.86, -0.32], HT = [0, 0.98, -0.97], HB = [0, 0.76, -1.01];
+    tube(g, BB, SC, 0.018, PAINT); tube(g, BB, HB, 0.02, PAINT); tube(g, [0, 0.82, -0.36], HT, 0.017, PAINT); tube(g, HB, HT, 0.022, PAINT);
+    for (const s of [-1, 1]) { tube(g, [s * 0.05, 0.34, 0], [s * 0.02, 0.3, -0.5], 0.012, PAINT); tube(g, [s * 0.05, 0.34, 0], [s * 0.01, 0.85, -0.31], 0.011, PAINT); tube(g, [s * 0.04, 0.76, -1.01], [s * 0.05, 0.34, -1.12], 0.013, PAINT); }
+    tube(g, HT, [0, 1.08, -0.95], 0.014, grey);
+    tube(g, [-0.28, 1.1, -0.82], [-0.12, 1.08, -0.97], 0.012, grey); tube(g, [-0.12, 1.08, -0.97], [0.12, 1.08, -0.97], 0.012, grey); tube(g, [0.12, 1.08, -0.97], [0.28, 1.1, -0.82], 0.012, grey);
+    for (const s of [-1, 1]) tube(g, [s * 0.28, 1.1, -0.82], [s * 0.3, 1.1, -0.72], 0.02, black);
+    add(g, new THREE.BoxGeometry(0.16, 0.06, 0.26), C('#3a2a1e'), 0, 0.97, -0.27);
+    add(g, new THREE.BoxGeometry(0.17, 0.02, 0.42), black, 0, 0.72, 0.03);
+    for (const s of [-1, 1]) tube(g, [s * 0.07, 0.72, 0.18], [s * 0.05, 0.36, 0.02], 0.008, black);
+    for (const [z, a0] of [[0, 0.3], [-1.12, 1.2]]) { const m = new THREE.TorusGeometry(0.37, 0.024, 4, 16, Math.PI * 0.75); m.rotateZ(a0); m.rotateY(Math.PI / 2); add(g, m, black, 0, 0.34, z); }
+    add(g, new THREE.BoxGeometry(0.03, 0.13, 0.56), PAINT, 0.07, 0.33, -0.25);
+    add(g, new THREE.BoxGeometry(0.07, 0.06, 0.08), head, 0, 0.86, -1.07);
+    add(g, new THREE.BoxGeometry(0.07, 0.05, 0.03), tail, 0, 0.72, 0.25);
+    return { geo: bakeGroup(g, tagOf), nose: 1.48, tail: 0.38, hw: 0.32, wb: 1.12, acc: 1.1 };
+  })();
+  // wielen voor alle wagens in twee instanced meshes: één tekenopdracht voor alle autowielen, één voor de fietswielen
+  const wheelGeo = (() => {
+    const g = new THREE.Group(), tyre = new THREE.TorusGeometry(0.78, 0.22, 8, 22); tyre.rotateY(Math.PI / 2); tyre.scale(2.27, 1, 1);
+    add(g, tyre, C('#1e1e1e'), 0, 0, 0);
+    const rim = new THREE.CylinderGeometry(0.62, 0.62, 0.9, 16); rim.rotateZ(Math.PI / 2); add(g, rim, C('#ffffff'), 0, 0, 0);
+    const hub = new THREE.CylinderGeometry(0.2, 0.24, 0.95, 10); hub.rotateZ(Math.PI / 2); add(g, hub, C('#777777'), 0, 0, 0);
+    add(g, new THREE.BoxGeometry(0.93, 0.12, 0.95), C('#2a2a2a'), 0, 0, 0);
+    return bakeGroup(g);
+  })();
+  const bikeWheelGeo = (() => {
+    const g = new THREE.Group(); add(g, new THREE.TorusGeometry(0.335, 0.02, 5, 22), C('#1e1e1e'), 0, 0, 0).rotation.y = Math.PI / 2;
+    add(g, new THREE.TorusGeometry(0.31, 0.01, 4, 22), C('#b5b8bb'), 0, 0, 0).rotation.y = Math.PI / 2;
+    for (let k = 0; k < 8; k++) add(g, new THREE.BoxGeometry(0.004, 0.62, 0.004), C('#9a9da0'), 0, 0, 0).rotation.x = (k * Math.PI) / 8;
+    const hub = new THREE.CylinderGeometry(0.025, 0.025, 0.1, 8); hub.rotateZ(Math.PI / 2); add(g, hub, C('#777777'), 0, 0, 0);
+    return bakeGroup(g);
+  })();
+  const wheelMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, metalness: 0.15 });
+  const WPS = 6; // wielen per wagen (trekker met aanhanger)
+  const wheelIM = new THREE.InstancedMesh(wheelGeo, wheelMat, NCAR * WPS), bikeIM = new THREE.InstancedMesh(bikeWheelGeo, wheelMat, NBIKE * 2);
+  for (const im of [wheelIM, bikeIM]) { im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.frustumCulled = false; im.castShadow = true; scene.add(im); }
+  const ZERO = new THREE.Matrix4().makeScale(0, 0, 0), WHITE = new THREE.Color('#ffffff');
+  for (let i = 0; i < wheelIM.count; i++) { wheelIM.setMatrixAt(i, ZERO); wheelIM.setColorAt(i, WHITE); }
+  for (let i = 0; i < bikeIM.count; i++) { bikeIM.setMatrixAt(i, ZERO); bikeIM.setColorAt(i, WHITE); }
+
+  // carrosserie met lamplicht: emissie = kleur van het hoekpunt maal glow (per wagen, alleen de lampen worden ververst)
+  const bodyMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4, metalness: 0.15, side: THREE.DoubleSide });
+  bodyMat.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float glow;\nvarying float vGlow;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvGlow = glow;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vGlow;').replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vColor.rgb * vGlow;');
+  };
+  bodyMat.customProgramCacheKey = () => 'verkeer';
+  for (const m of [...Object.values(MODELS), BIKE]) { m.geo.computeBoundingSphere(); const t = m.geo.attributes.tag.array; m.tags = t; m.lamp0 = t.findIndex((v) => v >= 2); if (m.lamp0 < 0) m.lamp0 = t.length; }
+  function bodyMesh(m) {
+    const geo = new THREE.BufferGeometry(), n = m.tags.length;
+    geo.setAttribute('position', m.geo.attributes.position); geo.setAttribute('normal', m.geo.attributes.normal);
+    geo.setAttribute('color', m.geo.attributes.color.clone());
+    const glow = new THREE.BufferAttribute(new Float32Array(n), 1); glow.setUsage(THREE.DynamicDrawUsage); geo.setAttribute('glow', glow);
+    geo.boundingSphere = m.geo.boundingSphere;
+    const mesh = new THREE.Mesh(geo, bodyMat); mesh.castShadow = true; mesh.receiveShadow = true; return mesh;
+  }
+  const col = (hex) => new THREE.Color(hex);
+  const CAR_PAINT = ['#8a8f94', '#c4c7c9', '#1c1e21', '#eeeeea', '#e9e9e4', '#4a4e52', '#1e2f4f', '#9e1b1b', '#2f5f9a', '#2f4f3a', '#b8a788', '#5d6b78', '#7a2430', '#c9c9c4'].map(col);
+  const VAN_PAINT = ['#f2f2ee', '#f2f2ee', '#eeeeea', '#c4c7c9', '#1e2f4f', '#8a8f94', '#a32020'].map(col);
+  const TRACTOR = [['#3b7d34', '#e8c21a', '#e8c21a'], ['#b8221c', '#e9e9e4', '#8a8f94'], ['#1f4f9a', '#eeeeea', '#d8d8d8'], ['#3f6e3a', '#2b2d30', '#c43a2a']].map((c) => c.map(col));
+  const BIKE_PAINT = ['#1b1b1b', '#1b1b1b', '#1b1b1b', '#2a3d2e', '#1f2f4a', '#e7dfc8', '#7a1f2b', '#5a6670', '#c8c4b8'].map(col);
+  const TRAILER = ['#b8221c', '#2f6e3a', '#1f4f9a', '#8a6a3a'].map(col);
+  function repaint(mesh, m, a, b) {
+    const c = mesh.geometry.attributes.color, t = m.tags;
+    for (let i = 0; i < t.length; i++) { const k = t[i] === 1 ? a : t[i] === 7 ? b : null; if (k) c.setXYZ(i, k.r, k.g, k.b); }
+    c.needsUpdate = true;
+  }
+
+  // ---- de deelnemers: een vaste pool, verdeeld over de soorten
+  const agents = [];
+  const PREF = {
+    car: { secondary: 4, tertiary: 4, unclassified: 2.5, residential: 1.6, living_street: 0.7, service: 0.08, track: 0.05 },
+    tractor: { secondary: 1.2, tertiary: 1.5, unclassified: 2.5, residential: 0.5, living_street: 0.3, service: 0.6, track: 2.2 },
+    bike: { secondary: 1, tertiary: 1.6, unclassified: 2, residential: 2, living_street: 1.6, service: 0.3, track: 0.9 },
+  };
+  const mix = MOBILE ? ['hatch', 'hatch', 'hatch', 'estate', 'van', 'van', 'tractor'] : ['hatch', 'hatch', 'hatch', 'hatch', 'estate', 'estate', 'estate', 'van', 'van', 'van', 'tractor', 'tractor'];
+  mix.forEach((type, k) => {
+    const m = MODELS[type], root = new THREE.Group(), body = bodyMesh(m); root.add(body); root.visible = false; scene.add(root);
+    const a = { id: k, kind: type === 'tractor' ? 'tractor' : 'car', type, m, root, body, pref: PREF[type === 'tractor' ? 'tractor' : 'car'], wheel0: k * WPS, rim: WHITE };
+    if (type === 'tractor') {
+      root.add(new THREE.Mesh(glassTGeo, glassTMat));
+      const tm = trailerModel(k % 2 ? 'aarde' : 'kratten'); tm.geo.computeBoundingSphere(); const t = tm.geo.attributes.tag.array; tm.tags = t; tm.lamp0 = t.findIndex((v) => v >= 2);
+      const troot = new THREE.Group(), tbody = bodyMesh(tm); troot.add(tbody); troot.visible = false; scene.add(troot);
+      a.trailerParts = { m: tm, root: troot, body: tbody };
+    }
+    agents.push(a);
+  });
+  for (let k = 0; k < NBIKE; k++) {
+    const root = new THREE.Group(), body = bodyMesh(BIKE); root.add(body); root.visible = false; scene.add(root);
+    // fietser: bovenlijf met de armen naar het stuur, benen die trappen
+    const rider = new THREE.Group(), upper = new THREE.Group(); rider.add(upper); root.add(rider);
+    const look = LIFE.personLook(), sc = Math.max(0.92, look.scale);
+    const arm = (s) => { const g = LIFE.PG.arm.clone(); g.rotateX(1.07); g.rotateZ(s * 0.12); g.translate(s * 0.205, 1.47, 0); return g; };
+    const torso = LIFE.withColor(mergeGeometries([LIFE.PG.body[look.style].clone(), arm(-1), arm(1)]));
+    LIFE.paint(torso, look.cols); torso.translate(0, -0.9, 0); const tm = new THREE.Mesh(torso, LIFE.lifeMat); tm.castShadow = true; upper.add(tm);
+    upper.position.y = 0.9; upper.rotation.x = -0.32;
+    const legs = [-1, 1].map((s) => { const p = new THREE.Group(); p.position.set(s * 0.085, 0.9, 0); const lg = LIFE.withColor(LIFE.PG.leg.clone()); LIFE.paint(lg, look.cols); const lm = new THREE.Mesh(lg, LIFE.lifeMat); lm.castShadow = true; p.add(lm); rider.add(p); return p; });
+    rider.scale.setScalar(sc); rider.position.set(0, 0.98 - 0.9 * sc, -0.25);
+    const a = { id: 100 + k, kind: 'bike', type: 'bike', m: BIKE, root, body, rider, torso: tm, legs, look, pref: PREF.bike, wheel0: k * 2, crank: 0 };
+    agents.push(a);
+  }
+  const cars = agents.filter((a) => a.kind !== 'bike'), bikes = agents.filter((a) => a.kind === 'bike');
+  // plekken om iemand neer te zetten: knopen binnen de kaart; auto's en fietsers aan verharde weg
+  const inner = (n) => { const [x, z] = NODES[n]; return x > BX0 + 40 && x < BX1 - 40 && z > BZ0 + 40 && z < BZ1 - 40; };
+  const ALLN = [...GRAPH.keys()].filter(inner), PAVED = ALLN.filter((n) => GRAPH.get(n).some(([m]) => !EDGE.get(ek(n, m)).u));
+
+  // ---- rijden
+  // rechts houden: auto's op hun eigen helft, fietsers langs de kant; shift schuift op (uitwijken, inhalen, opzij)
+  const laneT = (r, a) => (a.kind === 'bike' ? Math.max(0.45, r.w / 2 - 0.55) : r.w >= 4.4 ? r.w * 0.25 : r.w >= 3.2 ? 0.55 : 0) + a.shift;
+  function extendT(a) {
+    let len = 0, px = a.x, pz = a.z;
+    for (const n of a.route) { len += Math.hypot(NODES[n][0] - px, NODES[n][1] - pz); [px, pz] = NODES[n]; }
+    while (len < 130 && a.route.length < 40) {
+      const k = a.route.length, last = k ? a.route[k - 1] : a.prevNode, before = k > 1 ? a.route[k - 2] : k === 1 ? a.prevNode : -1;
+      const all = (GRAPH.get(last) || []).map((e) => e[0]);
+      let opts = all.filter((n) => n !== before);
+      if (!opts.length) { if (a.kind === 'bike' || inView(a.x, a.z)) opts = all; else { a.deadEnd = true; return; } }
+      if (!opts.length) { a.deadEnd = true; return; }
+      // liefst over de grotere wegen en rechtdoor, niet zomaar een oprit in
+      const [lx, lz] = NODES[last], [bx, bz] = before >= 0 ? NODES[before] : [lx + Math.sin(a.h), lz + Math.cos(a.h)], inA = Math.atan2(lx - bx, lz - bz);
+      const w = opts.map((n) => {
+        const r = EDGE.get(ek(last, n)), turn = Math.abs(wrap(Math.atan2(NODES[n][0] - lx, NODES[n][1] - lz) - inA));
+        return (a.pref[r.kind] ?? 0.5) * (turn > 2.4 ? 0.03 : turn > 1.2 ? 0.7 : 1) * (r.u && a.kind === 'car' ? 0.3 : 1) * (GRAPH.get(n).length === 1 ? 0.15 : 1);
+      });
+      let x = rnd() * w.reduce((s, v) => s + v, 0), n = opts[opts.length - 1];
+      for (let i = 0; i < opts.length; i++) { x -= w[i]; if (x <= 0) { n = opts[i]; break; } }
+      len += Math.hypot(NODES[n][0] - px, NODES[n][1] - pz); [px, pz] = NODES[n];
+      a.route.push(n);
+    }
+  }
+  function drive(a, dt) {
+    advance(a);
+    if (a.route.length < 4 && !a.deadEnd) extendT(a);
+    if (!a.route.length) { a.v = Math.max(0, a.v - 6 * dt); a.acc = -6; return; }
+    const near = follow(a, a.m.nose * 0.5 + 2.5 + a.v * 0.45, laneT), far = follow(a, 14 + a.v * 1.5, laneT);
+    // eigen snelheid: de maximumsnelheid met een persoonlijke marge, langzamer op zand en in de bocht
+    let vd = a.kind === 'car' ? Math.min(a.cruise, ((near.r?.v || 50) / 3.6) * a.pers) : a.cruise;
+    if (near.r?.u) vd *= a.kind === 'car' ? 0.75 : 0.88;
+    const fd = Math.abs(wrap(Math.atan2(-(far.x - a.x), -(far.z - a.z)) - a.h));
+    vd *= fd > 1.1 ? 0.3 : fd > 0.6 ? 0.5 : fd > 0.3 ? 0.78 : 1;
+    vd = Math.min(vd, a.vObs);
+    if (a.hitT > 0) vd = 0;
+    const diff = wrap(Math.atan2(-(near.x - a.x), -(near.z - a.z)) - a.h);
+    if (Math.abs(diff) > 1.3) vd = Math.min(vd, a.kind === 'bike' ? 2.5 : 4);
+    const v = Math.max(0, a.v), yawMax = a.kind === 'bike' ? Math.max(0.8, Math.min(v / 2.2, 2.2)) : Math.max(0.4, Math.min(v / 4.2, 8 / Math.max(1, v)));
+    a.yawRate = clamp(diff * 2.6, -yawMax, yawMax) * Math.min(1, 0.25 + v / 2); a.h += a.yawRate * dt;
+    const nv = vd > a.v ? Math.min(vd, a.v + a.m.acc * dt) : Math.max(vd, a.v - Math.min(8, Math.max(2.5, (a.v - vd) * 2.5)) * dt);
+    a.acc = (nv - a.v) / dt; a.v = nv;
+    a.x += -Math.sin(a.h) * a.v * dt; a.z += -Math.cos(a.h) * a.v * dt;
+    a.shift += clamp(a.shiftT - a.shift, -dt * 1.3, dt * 1.3);
+    if (a.trailer) tow(a, false);
+  }
+  // de aanhanger loopt als een kar achter het trekpunt aan
+  function tow(a, init) {
+    const t = a.trailer, hx = a.x + Math.sin(a.h) * HITCH, hz = a.z + Math.cos(a.h) * HITCH;
+    if (init) { t.x = hx + Math.sin(a.h) * TOW; t.z = hz + Math.cos(a.h) * TOW; }
+    const dx = t.x - hx, dz = t.z - hz, L = Math.hypot(dx, dz) || 1;
+    t.x = hx + (dx / L) * TOW; t.z = hz + (dz / L) * TOW; t.h = Math.atan2(-(hx - t.x), -(hz - t.z));
+  }
+
+  // ---- wie staat er in de weg? Alles wat rijdt als een balk langs zijn as: jij, de politie en het verkeer
+  const bodies = [];
+  function addBody(ref, x, z, h, nose, tl, hw, v, kind) {
+    const fx = -Math.sin(h), fz = -Math.cos(h), co = (nose - tl) / 2, hl = (nose + tl) / 2, cx = x + fx * co, cz = z + fz * co;
+    bodies.push({ ref, cx, cz, fx, fz, hl, hw, v, kind, ax: cx - fx * hl, az: cz - fz * hl, bx: cx + fx * hl, bz: cz + fz * hl });
+  }
+  function gather() {
+    bodies.length = 0;
+    addBody('player', state.x, state.z, state.h, VEH.wb + VEH.front, VEH.rear, VEH.half + 0.05, state.v, 'player');
+    for (const c of COPS.cars) if (c.mode !== 'off') addBody(c, c.x, c.z, c.h, 3.48, 1.02, 0.87, c.v, (c.mode === 'chase' || c.hold) ? 'siren' : 'cop');
+    for (const a of agents) if (a.on) { addBody(a, a.x, a.z, a.h, a.m.nose, a.m.tail, a.m.hw, a.v, a.kind); if (a.trailer) addBody(a.trailer, a.trailer.x, a.trailer.z, a.trailer.h, a.trailerParts.m.nose, a.trailerParts.m.tail, a.trailerParts.m.hw, a.v, 'trailer'); }
+  }
+  const path = [];
+  function scan(a, now) {
+    if (!a.route.length) { a.vObs = 0; a.block = null; return; }
+    // punten op de eigen rijlijn, vanaf de neus tot een paar seconden vooruit
+    const reach = Math.min(48, 8 + a.v * 3), stepL = a.kind === 'bike' ? 1.2 : 2;
+    path.length = 0;
+    for (let d = 0; d <= reach; d += stepL) { const p = follow(a, a.m.nose + d, laneT); if (!p) break; path.push(p.x, p.z, d, p.dx, p.dz); if (p.end) break; }
+    let vmax = Infinity, block = null, blockKind = '', onc = false, siren = false;
+    const fx = -Math.sin(a.h), fz = -Math.cos(a.h);
+    for (const b of bodies) {
+      if (b.ref === a || b.ref === a.trailer || b.ref === a.passing) continue;
+      const rx = b.cx - a.x, rz = b.cz - a.z; if (Math.abs(rx) > 75 || Math.abs(rz) > 75) continue;
+      if (b.kind === 'siren' && rx * rx + rz * rz < 55 * 55) siren = true;
+      if (a.ghost > 0 && b.kind !== 'player') continue;
+      for (let k = 0; k < path.length; k += 5) {
+        const s = segDist(path[k], path[k + 1], b.ax, b.az, b.bx, b.bz);
+        if (s.d > a.m.hw + b.hw + 0.3) continue;
+        const gap = path[k + 2], dot = b.fx * path[k + 3] + b.fz * path[k + 4];
+        let allow;
+        if (dot > 0.35) allow = Math.max(0, b.v * dot + (gap - (a.kind === 'bike' ? 1.5 + a.v * 0.5 : 2.4 + a.v * 0.75)) * 0.8);
+        else if (dot < -0.35) { onc = true; allow = gap > 26 ? a.cruise * 0.6 : Math.max(0, (gap - 4) * 0.45); }
+        else allow = Math.max(0, (gap - 2.5) * 0.7);
+        // twee die op elkaar wachten: de een gaat voor
+        if (allow < 1 && b.ref.block === a && a.id < (b.ref.id ?? -1) && b.kind !== 'player') allow = 1.5;
+        if (allow < vmax) { vmax = allow; block = b; }
+        break;
+      }
+    }
+    a.block = block ? block.ref : null; blockKind = block ? block.kind : '';
+    // uitwijken: voor een tegenligger op dezelfde strook naar rechts, voor een zwaailicht helemaal opzij
+    let shiftT = 0;
+    if (a.passing) {
+      const p = a.passing, pb = bodies.find((b) => b.ref === p);
+      const ahead = pb ? (pb.cx - a.x) * fx + (pb.cz - a.z) * fz : -99;
+      if (!pb || ahead < -(a.m.tail + pb.hl + 3)) a.passing = null; // voorbij: terug naar rechts
+      else if (onc && ahead > a.m.nose) a.passing = null; // toch een tegenligger: afbreken
+      else { shiftT = a.passShift; if (Math.abs(a.shift - a.passShift) > 0.35 && ahead > 0) vmax = Math.min(vmax, pb.v + 0.8); }
+    }
+    if (!a.passing) {
+      if (onc) shiftT = a.kind === 'bike' ? 0.35 : 1.05;
+      if (siren && a.kind !== 'bike') { shiftT = Math.max(shiftT, 1.25); vmax = Math.min(vmax, 3); }
+      else if (siren) vmax = Math.min(vmax, 2);
+    }
+    // niet de sloot in
+    if (shiftT > 0.3 && path.length > 10) { const k = 10, rx = -path[k + 4], rz = path[k + 3]; if (inWater(path[k] + rx * (shiftT + a.m.hw), path[k + 1] + rz * (shiftT + a.m.hw))) shiftT = 0.3; }
+    a.shiftT = shiftT; a.vObs = vmax;
+    // inhalen: een fietser, een trekker of iets dat stilstaat, als de weg vooruit vrij en recht is
+    const slow = block && (blockKind === 'bike' || blockKind === 'tractor' || blockKind === 'trailer' || Math.abs(block.v) < 0.8);
+    a.wait = slow && vmax < a.cruise * 0.7 ? a.wait + 0.1 : 0;
+    if (!a.passing && a.kind !== 'bike' && a.wait > 1.2 && path.length >= 5 * 12) {
+      const fd = Math.abs(wrap(Math.atan2(-(path[path.length - 5] - a.x), -(path[path.length - 4] - a.z)) - a.h));
+      const clear = fd < 0.3 && !bodies.some((b) => { if (b.ref === a || b === block) return false; const rx = b.cx - a.x, rz = b.cz - a.z, fw = rx * fx + rz * fz, lt = rx * -fz + rz * fx; return fw > -4 && fw < 95 && lt < 3 && lt > -7 && (b.fx * fx + b.fz * fz < -0.3 || Math.abs(b.v) < 0.5) && b !== block; });
+      if (clear) {
+        const lt = (block.cx - a.x) * -fz + (block.cz - a.z) * fx; // hoe ver rechts van mij staat het
+        a.passing = block.ref; a.passShift = a.shift + Math.min(0, lt - (block.hw + a.m.hw + 0.8)); a.wait = 0;
+      }
+    }
+    // toeteren of bellen als jij stilstaat in de weg
+    if (block && block.kind === 'player' && a.v < 0.6 && Math.abs(state.v) < 0.5) {
+      a.waitP += 0.1;
+      if (a.waitP > 2.5 && now > a.honkT) { a.honkT = now + 8000 + rnd() * 4000; const d = Math.hypot(a.x - state.x, a.z - state.z); if (a.kind === 'bike') bell(d); else carHorn(d, a.kind === 'tractor' ? 0.75 : a.type === 'van' ? 0.88 : 1); }
+    } else a.waitP = 0;
+    // zit hij vast achter iets anders dan jou, dan rijdt hij er na een tijdje gewoon doorheen (ver weg ziet niemand het)
+    if (a.v < 0.3 && vmax < 0.5 && blockKind !== 'player') a.stuck += 0.1; else a.stuck = 0;
+    if (a.stuck > 7) { a.ghost = 3; a.stuck = 0; }
+  }
+  // knipperlicht aan voor een kruising waar hij afslaat
+  function indicate(a) {
+    a.ind = 0; let px = a.x, pz = a.z, len = 0;
+    for (let k = 0; k < a.route.length - 1 && len < 38; k++) {
+      const n = a.route[k], [nx, nz] = NODES[n]; len += Math.hypot(nx - px, nz - pz); px = nx; pz = nz;
+      if ((GRAPH.get(n)?.length || 0) < 3) continue;
+      const p = k ? NODES[a.route[k - 1]] : a.prev, q = NODES[a.route[k + 1]];
+      const t = wrap(Math.atan2(q[0] - nx, q[1] - nz) - Math.atan2(nx - p[0], nz - p[1]));
+      if (Math.abs(t) > 0.45 && len < 38) a.ind = t > 0 ? -1 : 1;
+      break;
+    }
+  }
+
+  // ---- neerzetten: een deel komt over je route op je af, de rest ergens om je heen
+  // de knopen vooruit: langs de route naar het adres als je die volgt, anders zo rechtdoor mogelijk
+  function aheadChain(maxLen) {
+    const fx = -Math.sin(state.h), fz = -Math.cos(state.h);
+    let best = null;
+    for (const [ri, i] of roadGrid.near(state.x, state.z)) { const r = ROADS[ri]; if (!r.d) continue; const s = segDist(state.x, state.z, r.pts[i][0], r.pts[i][1], r.pts[i + 1][0], r.pts[i + 1][1]); if (!best || s.d < best.d) best = { d: s.d, a: r.n[i], b: r.n[i + 1] }; }
+    if (!best) return [];
+    const ahead = (n) => (NODES[n][0] - state.x) * fx + (NODES[n][1] - state.z) * fz;
+    let n = ahead(best.a) > ahead(best.b) ? best.a : best.b; if (!GRAPH.has(n)) return [];
+    const out = [[n, Math.hypot(NODES[n][0] - state.x, NODES[n][1] - state.z)]], seen = new Set([n]);
+    let dx = fx, dz = fz, len = out[0][1];
+    while (len < maxLen && out.length < 90) {
+      let next = null;
+      const hop = GAME.job ? nextHop.get(n) : undefined;
+      if (hop !== undefined && !seen.has(hop)) { const ux = NODES[hop][0] - NODES[n][0], uz = NODES[hop][1] - NODES[n][1]; if ((ux * dx + uz * dz) / (Math.hypot(ux, uz) || 1) > -0.3) next = hop; }
+      if (next === null) { let bd = -0.3; for (const [m] of GRAPH.get(n) || []) { if (seen.has(m)) continue; const ux = NODES[m][0] - NODES[n][0], uz = NODES[m][1] - NODES[n][1], d = (ux * dx + uz * dz) / (Math.hypot(ux, uz) || 1); if (d > bd) { bd = d; next = m; } } }
+      if (next === null) break;
+      const ux = NODES[next][0] - NODES[n][0], uz = NODES[next][1] - NODES[n][1], L = Math.hypot(ux, uz) || 1;
+      len += L; dx = ux / L; dz = uz / L; seen.add(next); out.push([next, len]); n = next;
+    }
+    return out;
+  }
+  const crowded = (x, z, r) => agents.some((o) => o.on && Math.hypot(o.x - x, o.z - z) < r) || COPS.cars.some((c) => c.mode !== 'off' && Math.hypot(c.x - x, c.z - z) < r);
+  function place(a, n, prevNode, route) {
+    const [x, z] = NODES[n];
+    Object.assign(a, { x, z, prevNode, prev: NODES[prevNode].slice(), route, v: 0, acc: 0, shift: 0, shiftT: 0, vObs: Infinity, passing: null, block: null, wait: 0, waitP: 0, stuck: 0, ghost: 0, hitT: 0, honkT: 0, whooshT: 0, deadEnd: false, ind: 0, lampKey: -1, yawRate: 0, spin: 0, y: 0, rel: 0 });
+    if (!a.route.length) { a.h = rnd() * Math.PI * 2; extendT(a); }
+    if (!a.route.length) return false;
+    const [tx, tz] = NODES[a.route[0]]; a.h = Math.atan2(-(tx - x), -(tz - z));
+    // meteen op de eigen helft van de weg
+    const r = EDGE.get(ek(prevNode === n ? n : prevNode, a.route[0])) || EDGE.get(ek(n, a.route[0]));
+    if (r) { const off = laneT(r, a); a.x += Math.cos(a.h) * off; a.z += -Math.sin(a.h) * off; }
+    a.v = Math.min(a.cruise, a.kind === 'car' ? ((r?.v || 50) / 3.6) * a.pers : a.cruise) * 0.8;
+    if (a.trailer) { tow(a, true); a.trailerParts.root.visible = true; }
+    a.on = true; a.root.visible = true; return true;
+  }
+  function dress(a) {
+    if (a.kind === 'bike') {
+      repaint(a.body, a.m, pick(BIKE_PAINT));
+      a.cruise = 3.9 + rnd() * 1.8; a.pers = 1;
+    } else if (a.kind === 'tractor') {
+      const [p, s, r] = pick(TRACTOR); repaint(a.body, a.m, p, s); a.rim = r;
+      a.cruise = (24 + rnd() * 6) / 3.6; a.pers = 1;
+      const withTrailer = rnd() < 0.55; a.trailer = withTrailer ? {} : null; a.trailerParts.root.visible = false;
+      if (withTrailer) repaint(a.trailerParts.body, a.trailerParts.m, pick(TRAILER));
+    } else {
+      repaint(a.body, a.m, pick(a.type === 'van' ? VAN_PAINT : CAR_PAINT)); a.rim = col(pick(['#c9cbcc', '#c9cbcc', '#9a9da0', '#2a2c2e']));
+      a.pers = 0.9 + rnd() * 0.2; a.cruise = 100 / 3.6;
+    }
+  }
+  function spawn(a, initial) {
+    dress(a);
+    const lo = initial ? 45 : a.kind === 'bike' ? 110 : 150, hi = a.kind === 'bike' ? 300 : 460;
+    // tegenligger: ergens vooruit op je route, op weg naar jou toe
+    if (rnd() < (a.kind === 'bike' ? 0.5 : 0.6)) {
+      const chain = aheadChain(hi + 20);
+      const cand = []; for (let i = 1; i < chain.length; i++) { const [n, d] = chain[i]; if (d < lo || d > hi || crowded(NODES[n][0], NODES[n][1], 45)) continue; if (!initial && inView(NODES[n][0], NODES[n][1])) continue; if (a.kind !== 'tractor' && a.kind !== 'bike' && !inner(n)) continue; cand.push(i); }
+      if (cand.length) {
+        const i = pick(cand), route = []; for (let k = i - 1; k >= 0; k--) route.push(chain[k][0]);
+        if (place(a, chain[i][0], chain[i][0], route)) { a.onc = true; return true; }
+      }
+    }
+    const pool = a.kind === 'car' ? PAVED : ALLN;
+    for (let k = 0; k < 60; k++) {
+      const n = pick(pool), [x, z] = NODES[n], d = Math.hypot(x - state.x, z - state.z);
+      if (d < lo || d > hi || crowded(x, z, 45) || (!initial && inView(x, z))) continue;
+      if (place(a, n, n, [])) { a.onc = false; return true; }
+    }
+    return false;
+  }
+  function remove(a) {
+    a.on = false; a.root.visible = false; if (a.trailerParts) a.trailerParts.root.visible = false;
+    const im = a.kind === 'bike' ? bikeIM : wheelIM, n = a.kind === 'bike' ? 2 : WPS; for (let k = 0; k < n; k++) im.setMatrixAt(a.wheel0 + k, ZERO); im.instanceMatrix.needsUpdate = true;
+  }
+
+  // ---- botsen met jou (de politie heeft haar eigen botsingen): rijen cirkels langs de lengteas
+  const P = [], Q = [];
+  const circ = (x, z, h, ws, out) => { const s = Math.sin(h), c = Math.cos(h); out.length = 0; for (const w of ws) out.push(x + w * s, z + w * c); return out; };
+  const circlesOf = (m) => { if (!m.circ) { const a = -m.nose + m.hw, b = m.tail - m.hw, n = Math.max(2, Math.ceil((b - a) / (m.hw * 1.2)) + 1); m.circ = []; for (let k = 0; k < n; k++) m.circ.push(a + (b - a) * k / (n - 1)); } return m.circ; };
+  const MASS = { car: 1.3, tractor: 4, bike: 0.12, trailer: 2 };
+  function collide(now) {
+    const nose = VEH.wb + VEH.front, pa = -nose + VEH.half, pb = VEH.rear - VEH.half, n = Math.max(2, Math.ceil((pb - pa) / (VEH.half * 1.2)) + 1), pr = VEH.half + 0.05;
+    const pws = []; for (let k = 0; k < n; k++) pws.push(pa + (pb - pa) * k / (n - 1));
+    circ(state.x, state.z, state.h, pws, P);
+    const hit = (a, x, z, h, m, kind, moveSelf) => {
+      if (Math.abs(x - state.x) > 16 || Math.abs(z - state.z) > 16) return;
+      circ(x, z, h, circlesOf(m), Q);
+      let gap = Infinity, nx = 0, nz = 0;
+      for (let i = 0; i < P.length; i += 2) for (let j = 0; j < Q.length; j += 2) { const dx = P[i] - Q[j], dz = P[i + 1] - Q[j + 1], d = Math.hypot(dx, dz) || 1e-3, g = d - pr - m.hw; if (g < gap) { gap = g; nx = dx / d; nz = dz / d; } }
+      if (gap >= 0) return;
+      const mass = MASS[kind], share = mass / (mass + 1), qx = state.x - nx * gap * share, qz = state.z - nz * gap * share;
+      if (!state.event && !blocked(qx, qz, state.h, roadAt(qx, qz, 0.3))) { state.x = qx; state.z = qz; moveSelf(nx * gap * (1 - share), nz * gap * (1 - share)); }
+      else moveSelf(nx * gap, nz * gap);
+      const pfx = -Math.sin(state.h), pfz = -Math.cos(state.h), afx = -Math.sin(a.h), afz = -Math.cos(a.h);
+      const vpx = pfx * state.v, vpz = pfz * state.v, rel = (vpx - afx * a.v) * nx + (vpz - afz * a.v) * nz;
+      if (rel >= 0) return;
+      const j = -1.3 * rel / (1 + 1 / mass);
+      if (!state.event) state.v = (vpx + j * nx) * pfx + (vpz + j * nz) * pfz;
+      a.v = Math.max(0, a.v - (j / mass) * Math.max(0, -(afx * nx + afz * nz)));
+      if (-rel > 2.2) {
+        bonk(); a.hitT = 2.5;
+        if (now > a.honkT) { a.honkT = now + 5000; const d = Math.hypot(x - state.x, z - state.z); if (a.kind === 'bike') bell(d); else carHorn(d, a.kind === 'tractor' ? 0.75 : 1); }
+        stats.hits++;
+        // reed jij erop in, en ziet de politie het?
+        if (vpx * nx + vpz * nz < -4 && (state.mode === 'drive' || state.mode === 'roam')) {
+          COPS.report(now, a.kind === 'bike' ? 'je reed een fietser aan' : a.kind === 'tractor' ? 'je ramde een trekker' : 'je reed een auto aan');
+          if (a.kind === 'bike' && now > (collide.toastT || 0)) { collide.toastT = now + 6000; showToast('Hé, kijk uit!', 'de fietser kon nog net blijven staan', 1600); }
+        }
+      }
+    };
+    for (const a of agents) {
+      if (!a.on) continue;
+      hit(a, a.x, a.z, a.h, a.m, a.kind, (dx, dz) => { a.x += dx; a.z += dz; });
+      if (a.trailer) { const t = a.trailer; hit(a, t.x, t.z, t.h, a.trailerParts.m, 'trailer', (dx, dz) => { t.x += dx; t.z += dz; }); }
+    }
+    // het verkeer onderling en met de politie: niet door elkaar heen (eenvoudig, langs de middens)
+    for (let i = 0; i < bodies.length; i++) {
+      const A = bodies[i]; if (A.kind === 'player' || A.kind === 'trailer') continue;
+      for (let k = 0; k < bodies.length; k++) {
+        const B = bodies[k]; if (k === i || B.kind === 'player' || B.ref === A.ref.trailer) continue;
+        if (A.kind === 'cop' || A.kind === 'siren') continue; // de politie duwt, het verkeer schuift
+        const ref = A.ref; if (!ref.on) continue;
+        const s = segDist(ref.x - Math.sin(ref.h) * (ref.m.nose - ref.m.tail) / 2, ref.z - Math.cos(ref.h) * (ref.m.nose - ref.m.tail) / 2, B.ax, B.az, B.bx, B.bz);
+        const need = A.hw + B.hw; if (s.d >= need || s.d < 1e-3) continue;
+        const cx = ref.x - Math.sin(ref.h) * (ref.m.nose - ref.m.tail) / 2, cz = ref.z - Math.cos(ref.h) * (ref.m.nose - ref.m.tail) / 2;
+        const push = (need - s.d) * 0.5; ref.x += (cx - s.x) / s.d * push; ref.z += (cz - s.z) / s.d * push;
+      }
+    }
+  }
+
+  // ---- in beeld zetten
+  const dummy = new THREE.Object3D(), eul = new THREE.Euler(), BIKE_WHEELS = { wheels: [[0, 0, 0.34, 1, 0], [0, -1.12, 0.34, 1, 1]] };
+  function wheelsOf(a, m, x, z, h, roll, im, i0, steer, unit) {
+    const ch = Math.cos(h), sh = Math.sin(h);
+    m.wheels?.forEach(([u, w, r, wd, front], k) => {
+      const lx = u * Math.cos(roll) - r * Math.sin(roll), ly = u * Math.sin(roll) + r * Math.cos(roll);
+      dummy.position.set(x + lx * ch + w * sh, a.y + ly, z - lx * sh + w * ch);
+      dummy.quaternion.setFromEuler(eul.set(-(a.spin * 0.31) / r, h + (front ? steer : 0), roll, 'YZX'));
+      if (unit) dummy.scale.set(1, 1, 1); else dummy.scale.set(wd, r, r); dummy.updateMatrix(); im.setMatrixAt(i0 + k, dummy.matrix);
+      if (a.rimSet !== a.rim) im.setColorAt(i0 + k, a.rim);
+    });
+  }
+  function setLamps(a, mesh, m, brake, ind, now) {
+    const g = mesh.geometry.attributes.glow, t = m.tags, arr = g.array, blink = Math.floor(now / 360) % 2 === 0;
+    const beam = 0.25 + 2.4 * Math.pow(Math.max(0, Math.sin(now / 130)), 6);
+    for (let i = m.lamp0; i < t.length; i++) { const k = t[i]; arr[i] = k === 2 ? 0.45 : k === 3 ? (brake ? 2.6 : 0.3) : k === 4 ? (ind < 0 && blink ? 2.4 : 0) : k === 5 ? (ind > 0 && blink ? 2.4 : 0) : k === 6 ? beam : 0; }
+    if (g.addUpdateRange) { g.clearUpdateRanges?.(); g.addUpdateRange(m.lamp0, t.length - m.lamp0); }
+    g.needsUpdate = true;
+  }
+  function pose(a, dt, now) {
+    const rd = roadAt(a.x, a.z, 0.3), y = rd && rd.r.b ? bridgeHeightAt(rd.r, rd.i, rd.t) : 0;
+    a.y += (y - a.y) * Math.min(1, dt * 10);
+    a.spin += a.v * dt / 0.31;
+    const bike = a.kind === 'bike';
+    const roll = bike ? clamp(Math.atan(a.v * a.yawRate / 9.81), -0.4, 0.4) : clamp(-a.v * a.yawRate * 0.012, -0.05, 0.05);
+    const pitch = bike ? 0 : clamp(a.acc * 0.006, -0.04, 0.025);
+    a.root.position.set(a.x, a.y + 0.02, a.z); a.root.rotation.set(pitch, a.h, roll, 'YZX');
+    const steer = clamp(Math.atan((a.yawRate * a.m.wb) / Math.max(1, a.v)), -0.6, 0.6);
+    if (bike) {
+      wheelsOf(a, BIKE_WHEELS, a.x, a.z, a.h, roll, bikeIM, a.wheel0, steer, true);
+      // trappen: de voeten op de pedalen, het been wordt korter als de knie omhoog komt
+      if (a.v > 0.3) a.crank += a.v * dt * 1.9;
+      const sc = a.rider.scale.x, hipY = a.rider.position.y + 0.9 * sc, hipZ = a.rider.position.z;
+      a.legs.forEach((L, i) => {
+        const ph = a.crank + i * Math.PI, py = 0.3 - 0.17 * Math.cos(ph), pz = -0.5 + 0.17 * Math.sin(ph), dy = py - hipY, dz = pz - hipZ, len = Math.hypot(dy, dz);
+        L.rotation.x = Math.atan2(-dz, -dy); L.scale.y = clamp(len / (0.88 * sc), 0.6, 1.05);
+      });
+    } else {
+      wheelsOf(a, a.m, a.x, a.z, a.h, 0, wheelIM, a.wheel0, steer);
+      if (a.trailer) {
+        const t = a.trailer, tp = a.trailerParts;
+        tp.root.position.set(t.x, a.y + 0.02, t.z); tp.root.rotation.set(0, t.h, 0);
+        wheelsOf(a, tp.m, t.x, t.z, t.h, 0, wheelIM, a.wheel0 + 4, 0);
+      }
+    }
+    a.rimSet = a.rim;
+    // remlichten, knipperlichten en de zwaailamp van de trekker
+    const brake = a.acc < -1.0 || (a.v < 0.15 && a.vObs < 0.3), key = (brake ? 1 : 0) + (a.ind < 0 ? 2 : a.ind > 0 ? 4 : 0) * (Math.floor(now / 360) % 2 === 0 ? 1 : 0);
+    if (key !== a.lampKey || a.m.beacon) { a.lampKey = key; setLamps(a, a.body, a.m, brake, a.ind, now); if (a.trailer) setLamps(a, a.trailerParts.body, a.trailerParts.m, brake, a.ind, now); }
+  }
+
+  // ---- de lus
+  const stats = { spawned: 0, oncoming: 0, passedYou: 0, hits: 0, ghosts: 0 };
+  let tick = 0, ready = false;
+  function think(now) {
+    gather();
+    for (const a of agents) {
+      if (!a.on) continue;
+      const d = Math.hypot(a.x - state.x, a.z - state.z);
+      // ver weg, of doodlopend uit het zicht: weg ermee
+      if ((d > (a.kind === 'bike' ? 340 : 520) || (a.deadEnd && a.route.length < 2) || (a.stuck > 4 && d > 60)) && !inView(a.x, a.z)) { remove(a); continue; }
+      if (a.ghost > 0) { a.ghost -= 0.1; if (a.ghost <= 0) stats.ghosts++; }
+      a.hitT = Math.max(0, a.hitT - 0.1);
+      scan(a, now); indicate(a);
+      // geteld als tegenligger als hij je vlak passeert in tegengestelde richting
+      const fx = -Math.sin(state.h), fz = -Math.cos(state.h), rel = (a.x - state.x) * fx + (a.z - state.z) * fz, opp = Math.cos(a.h - state.h) < -0.5;
+      if (opp && a.rel > 0 && rel <= 0 && d < 12) stats.passedYou++;
+      a.rel = rel;
+      // zoef als er vlak langs je een auto voorbijkomt
+      if (a.kind !== 'bike' && d < 7 && now > a.whooshT) { const vr = Math.hypot(-Math.sin(a.h) * a.v + Math.sin(state.h) * state.v, -Math.cos(a.h) * a.v + Math.cos(state.h) * state.v); if (vr > 9) { a.whooshT = now + 2500; whoosh(Math.min(1, vr / 25) * (1 - d / 8)); } }
+    }
+    for (const c of COPS.cars) c.tlim = c.mode === 'patrol' || c.mode === 'leave' ? limitFor(c, COPS.laneOf) : Infinity;
+    // aanvullen, een paar per keer
+    let budget = 2;
+    for (const a of agents) if (!a.on && budget > 0) { budget--; if (spawn(a, false)) { stats.spawned++; if (a.onc) stats.oncoming++; } }
+  }
+  function update(dt, now) {
+    if (!ready) return;
+    if ((tick -= dt) <= 0) { tick = 0.1; think(now); }
+    for (const a of agents) if (a.on) drive(a, dt);
+    if (state.mode === 'drive' || state.mode === 'roam' || state.mode === 'intro') collide(now);
+    for (const a of agents) if (a.on) pose(a, dt, now);
+    wheelIM.instanceMatrix.needsUpdate = true; bikeIM.instanceMatrix.needsUpdate = true;
+    if (wheelIM.instanceColor) wheelIM.instanceColor.needsUpdate = true;
+  }
+  function reset() {
+    for (const a of agents) if (a.on) remove(a);
+    ready = true; tick = 0;
+    for (const a of agents) spawn(a, true);
+    gather();
+  }
+  // de politie op patrouille remt voor het verkeer en voor jou
+  function limitFor(c, lane) {
+    if (!c.route.length) return Infinity;
+    let vmax = Infinity;
+    const reach = Math.min(40, 8 + c.v * 3);
+    for (let d = 0; d <= reach && vmax === Infinity; d += 2) {
+      const p = follow(c, 3.48 + d, lane); if (!p) break;
+      for (const b of bodies) {
+        if (b.ref === c || b.kind === 'cop' || b.kind === 'siren' || Math.abs(b.cx - p.x) > 7 || Math.abs(b.cz - p.z) > 7) continue;
+        if (segDist(p.x, p.z, b.ax, b.az, b.bx, b.bz).d > 0.87 + b.hw + 0.3) continue;
+        const dot = b.fx * p.dx + b.fz * p.dz;
+        vmax = Math.min(vmax, dot > 0.35 ? Math.max(0, b.v * dot + (d - (2.4 + c.v * 0.75)) * 0.8) : Math.max(0, (d - 4) * 0.5));
+      }
+      if (p.end) break;
+    }
+    return vmax;
+  }
+  // afstand tot wat er recht voor jou rijdt (voor de automatische piloot)
+  function ahead() {
+    const fx = -Math.sin(state.h), fz = -Math.cos(state.h), nose = VEH.wb + VEH.front; let best = Infinity;
+    for (const b of bodies) { if (b.kind === 'player') continue; const rx = b.cx - state.x, rz = b.cz - state.z, fw = rx * fx + rz * fz - nose - b.hl, lt = rx * -fz + rz * fx; if (fw > -1 && fw < best && Math.abs(lt) < VEH.half + b.hw + 0.4) best = fw; }
+    return best;
+  }
+  return { update, reset, ahead, agents, bodies, stats };
 })();
 
 // ------------------------------------------------------------------ bezorgen: een dienst van vijf minuten, punten per adres
@@ -2381,6 +3052,8 @@ function drawMinimap(x, z, heading) {
     const [gx, gz] = tp(DEST.gate[0], DEST.gate[1]);
     mg.fillStyle = '#ffd36a'; mg.strokeStyle = '#15212c'; mg.lineWidth = 2; mg.beginPath(); mg.arc(gx, gz, 7, 0, Math.PI * 2); mg.fill(); mg.stroke();
   }
+  mg.fillStyle = '#f4efe2'; mg.strokeStyle = '#15212c'; mg.lineWidth = 1.2;
+  for (const a of TRAFFIC.agents) { if (!a.on) continue; const [p, q] = tp(a.x, a.z); mg.beginPath(); mg.arc(p, q, a.kind === 'bike' ? 2.2 : 3.6, 0, Math.PI * 2); mg.fill(); mg.stroke(); }
   const blink = Math.floor(performance.now() / 250) % 2;
   for (const c of COPS.cars) {
     if (c.mode === 'off') continue;
@@ -2478,6 +3151,17 @@ function hiss() {
   s.connect(f); f.connect(g); g.connect(master); s.start(t + 0.4);
 }
 function bonk() { beep([90, 60], 0.18, 'triangle', 0.5); }
+// het verkeer: een toeter of een fietsbel, zachter naarmate het verder weg is
+const audible = (d) => Math.max(0, 1 - d / 90);
+function carHorn(d, pitch = 1) { if (audible(d)) beep([370 * pitch, 466 * pitch], 0.34, 'square', 0.14 * audible(d)); }
+function bell(d) { if (!audible(d)) return; beep([2093, 2637], 0.07, 'triangle', 0.1 * audible(d)); setTimeout(() => beep([2093, 2637], 0.16, 'triangle', 0.1 * audible(d)), 130); }
+// zoef van een auto die vlak langs je rijdt: ruis door een bandfilter dat omlaag glijdt
+function whoosh(vol) {
+  if (!audio || vol <= 0) return; const { ctx, master } = audio; const t = ctx.currentTime;
+  const b = ctx.createBuffer(1, ctx.sampleRate * 0.8, ctx.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * i / d.length);
+  const s = ctx.createBufferSource(); s.buffer = b; const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 0.9; f.frequency.setValueAtTime(900, t); f.frequency.exponentialRampToValueAtTime(260, t + 0.75);
+  const g = ctx.createGain(); g.gain.value = 0.5 * vol; s.connect(f); f.connect(g); g.connect(master); s.start();
+}
 function thump(strength) { beep([70 + strength * 30], 0.08, 'sine', 0.15 + strength * 0.35); }
 
 // ------------------------------------------------------------------ invoer
@@ -2583,7 +3267,8 @@ function autopilot() {
   const relTo = ([tx, tz]) => { let rel = Math.atan2(-(tx - state.x), -(tz - state.z)) - state.h; while (rel > Math.PI) rel -= Math.PI * 2; while (rel < -Math.PI) rel += Math.PI * 2; return rel; };
   const near = relTo(pointAhead(6 + Math.abs(state.v) * 0.6)), far = relTo(pointAhead(30));
   const left = Math.hypot(DEST.gate[0] - state.x, DEST.gate[1] - state.z);
-  const want = left < 25 ? 2 : Math.abs(far) > 0.45 ? 4.5 : state.autoWant || Math.min(11.5, state.limit / 3.6); // autoWant: om de politie te testen
+  let want = left < 25 ? 2 : Math.abs(far) > 0.45 ? 4.5 : state.autoWant || Math.min(11.5, state.limit / 3.6); // autoWant: om de politie te testen
+  const blk = TRAFFIC.ahead(); if (blk < 6 + state.v * 1.5) want = Math.min(want, Math.max(0, (blk - 2.5) * 0.6));
   return { gas: state.v < want ? 1 : 0, brake: state.v > want + 1.5 ? 1 : 0, steerIn: Math.max(-1, Math.min(1, near * 2.2)) };
 }
 
@@ -2801,6 +3486,7 @@ function step(dt, now) {
     }
     if (state.mode === 'drive' && state.time >= SHIFT) endShift();
   }
+  TRAFFIC.update(dt, now);
 }
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -2879,7 +3565,7 @@ function startShift(atStart) {
   startJob((GAME.next || pickJob(state.x, state.z, true)).a); GAME.next = null;
   state.time = 0; state.mode = 'drive'; camInit = false; last = performance.now(); navTimer = 0;
   $('hud').hidden = false; $('hud').classList.remove('roam');
-  COPS.reset();
+  COPS.reset(); TRAFFIC.reset();
 }
 function endShift() {
   state.mode = 'done'; keys.clear(); updateAudio(0.15, 0, true); COPS.stop(); $('tilt').hidden = true;
@@ -2924,6 +3610,7 @@ const boot = (data) => {
   prepareNext();
   chooseVehicle(VEHICLES[saved] ? saved : 'ape');
   drawSpeedo(0, 1, 0);
+  TRAFFIC.reset();
   if (data && typeof data.x === 'number' && (data.mode === 'drive' || data.mode === 'roam')) {
     Object.assign(state, { x: data.x, z: data.z, h: data.h }); startShift(false);
   } else if (location.hash === '#demo') {
@@ -2932,7 +3619,7 @@ const boot = (data) => {
   requestAnimationFrame(frame);
 };
 window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
-window.__ape = { state, keys, routeFrom, DEST, camera, THREE, scene, bumpHeight, BUMPS, LIFE, COPS, GAME, ADDRS, NODES, startShift, endShift, deliver, pickJob, startJob, get aerialLoaded() { return aerialLoaded; }, get frames() { return renderer.info.render.frame; },
+window.__ape = { state, keys, routeFrom, DEST, camera, THREE, scene, bumpHeight, BUMPS, LIFE, COPS, TRAFFIC, GAME, ADDRS, NODES, startShift, endShift, deliver, pickJob, startJob, get aerialLoaded() { return aerialLoaded; }, get frames() { return renderer.info.render.frame; },
   sim(seconds, dt = 1 / 60) { let maxSus = 0, thumps = 0, events = []; const t0 = state.lastThump;
     for (let t = 0; t < seconds; t += dt) { if (state.event) { updateEvent(dt); if (!events.includes(state.event)) events.push(state.event); } else physics(dt); updateNav(dt); maxSus = Math.max(maxSus, Math.abs(state.susY)); if (state.lastThump !== t0) thumps++; }
     return { x: +state.x.toFixed(1), z: +state.z.toFixed(1), v: +(state.v * 3.6).toFixed(1), maxSus: +maxSus.toFixed(3), events, street: streetShown }; },
