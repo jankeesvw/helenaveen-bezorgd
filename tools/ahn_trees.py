@@ -28,7 +28,7 @@ def raster(cov):
             if not f.exists():
                 url = ('https://service.pdok.nl/rws/ahn/wcs/v1_0?service=WCS&version=2.0.1&request=GetCoverage'
                        f'&coverageId={cov}&subset=x({bx0},{bx1})&subset=y({by0},{by1})&format=image/tiff')
-                with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'ape-helenaveen/1.0'}), timeout=300) as r:
+                with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'tour-helenaveen/1.0'}), timeout=300) as r:
                     f.write_bytes(r.read())
                 print('opgehaald', f.name, flush=True)
             a = np.array(Image.open(f), dtype=np.float32)

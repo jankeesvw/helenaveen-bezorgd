@@ -16,7 +16,7 @@ base = f"https://api.3dbag.nl/collections/pand/items?bbox={','.join(map(str, BBO
 def get(url):
     for attempt in range(4):
         try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'ape-helenaveen/1.0'}), timeout=60) as r:
+            with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'tour-helenaveen/1.0'}), timeout=60) as r:
                 return json.load(r)
         except Exception as e:  # tijdelijke 500's van de API
             print('opnieuw:', e, flush=True); time.sleep(1 + attempt)

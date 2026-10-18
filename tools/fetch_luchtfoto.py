@@ -16,7 +16,7 @@ for ty in range(0, H, TILE):
         by1, by0 = Y1 - ty * RES, Y1 - (ty + h) * RES
         url = ('https://service.pdok.nl/hwh/luchtfotorgb/wms/v1_0?service=WMS&version=1.3.0&request=GetMap'
                f'&layers=Actueel_orthoHR&styles=&crs=EPSG:28992&bbox={bx0},{by0},{bx1},{by1}&width={w}&height={h}&format=image/jpeg')
-        with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'ape-helenaveen/1.0'}), timeout=120) as r:
+        with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'tour-helenaveen/1.0'}), timeout=120) as r:
             out.paste(Image.open(io.BytesIO(r.read())).convert('RGB'), (tx, ty))
         print(f'tegel {tx},{ty} ({w}x{h})', flush=True)
 out.save(ROOT / 'data' / 'luchtfoto.jpg', quality=88)
