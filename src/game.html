@@ -64,6 +64,17 @@ body { margin: 0; background: #a9c6dc; color: var(--sign-white); font-family: va
 .boxes { display: grid; gap: 6px; }
 .timer.low b { color: #ff6b5e; }
 .hud.roam .boxes, .hud.roam .nav { display: none; }
+/* verhaalbord: een kaartje met een jaartal, een titel en een stukje geschiedenis */
+.story { position: absolute; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); width: min(460px, calc(100vw - 32px)); box-sizing: border-box; background: var(--sign-white); color: var(--ink); border-radius: 10px; border-top: 6px solid #7a4a2a; box-shadow: 0 8px 26px rgba(0,0,0,.35); padding: 10px 16px 12px; pointer-events: auto; cursor: pointer; }
+.story small { display: block; font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #7a4a2a; }
+.story b { display: block; font-size: 19px; font-weight: 900; font-style: italic; line-height: 1.15; margin: 2px 0 4px; color: var(--sign-blue); }
+.story p { margin: 0; font-size: 14px; line-height: 1.4; }
+.story.in { animation: storyIn .35s ease-out; }
+@keyframes storyIn { from { opacity: 0; transform: translate(-50%, 14px); } }
+body.is-touch .story { bottom: auto; top: 26%; }
+@media (min-width: 900px) { body:not(.is-touch) .story { width: min(460px, calc(100vw - 480px)); } }
+/* stof van het turfstrooisel */
+.dust { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 55%, rgba(110,82,55,0) 30%, rgba(96,70,44,.62) 100%); opacity: 0; transition: opacity .5s; }
 /* maximumsnelheid: rond bord met rode rand */
 .limit { width: 54px; height: 54px; box-sizing: border-box; border-radius: 50%; background: #fff; border: 7px solid var(--anwb-red); color: var(--ink); display: grid; place-items: center; font: 900 21px var(--font-sign); padding-top: 3px; box-shadow: 0 4px 12px rgba(0,0,0,.3); flex-shrink: 0; }
 .limit.over { animation: over .5s infinite; }
@@ -192,7 +203,7 @@ body.is-touch .tilt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
 }
 /* smalle telefoon staand: punten en dienst boven de teller, dan blijven Toet en Cam vrij */
 @media (max-width: 440px) { body.is-touch .boxes { position: absolute; left: 0; bottom: calc(100% + 8px); grid-auto-flow: column; } }
-@media (prefers-reduced-motion: reduce) { .nav .arrow { transition: none; } .btn { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .nav .arrow { transition: none; } .btn { transition: none; } .story.in { animation: none; } }
 .loading { position: fixed; inset: 0; display: grid; place-items: center; color: var(--ink); background: #a9c6dc; font-weight: 800; font-size: 18px; letter-spacing: .1em; text-transform: uppercase; }
 </style>
 
@@ -200,6 +211,8 @@ body.is-touch .tilt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
 
 <div class="hud" id="hud" hidden>
   <div class="flash" id="flash" hidden></div>
+  <div class="dust" id="dust"></div>
+  <div class="story" id="story" hidden role="status"><small id="storyHead"></small><b id="storyTitle"></b><p id="storyText"></p></div>
   <div class="street" id="street" data-empty="1"><small>Helenaveen</small><span id="streetName"></span></div>
   <div class="wanted" id="wanted" hidden><b>Politie</b><span class="stars" id="stars">★☆☆</span><small id="wantedTxt"></small></div>
   <div class="mapwrap"><canvas id="minimap" width="420" height="420"></canvas></div>
@@ -248,6 +261,7 @@ body.is-touch .tilt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
         <span class="ar">↑</span><span>Start: Soemeersingel 25</span><span class="km">5:00</span>
         <span class="ar">→</span><span id="firstAddr">Eerste adres</span><span class="km" id="routeKm"></span>
         <span class="ar">★</span><span id="bestLine">Beste dienst</span><span class="km" id="bestPts"></span>
+        <span class="ar">◆</span><span>Weetjes van toen gevonden</span><span class="km" id="weetjesN"></span>
       </div>
       <h2 class="sect">Wat je bezorgt</h2>
       <div class="lading" aria-label="Soorten lading">
@@ -255,7 +269,7 @@ body.is-touch .tilt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
         <span><svg viewBox="0 0 32 24" aria-hidden="true"><path d="M16 2 28 20q-12 4-24 0z" fill="#f2c12e"/><path d="M5 18.5q11 4 22 0l1 1.5q-12 4-24 0z" fill="#c9955f"/><circle cx="14" cy="12" r="2.2" fill="#c41e2a"/><circle cx="19" cy="16" r="2" fill="#c41e2a"/><circle cx="11" cy="17" r="1.6" fill="#c41e2a"/></svg><b>Pizza's</b><small class="haast">haast</small></span>
         <span><svg viewBox="0 0 32 24" aria-hidden="true"><path d="M3 14h26l-2 8H5z" fill="#b8b2a6"/><ellipse cx="9" cy="12" rx="3.4" ry="4.4" fill="#f2eee6" stroke="#cfc9bd"/><ellipse cx="16" cy="11" rx="3.4" ry="4.4" fill="#c9955f"/><ellipse cx="23" cy="12" rx="3.4" ry="4.4" fill="#f2eee6" stroke="#cfc9bd"/></svg><b>Eieren</b><small class="breekbaar">breekbaar</small></span>
         <span><svg viewBox="0 0 32 24" aria-hidden="true"><rect x="5" y="15" width="22" height="7" rx="1" fill="#f7f1e8" stroke="#e88aa6" stroke-width="1.5"/><rect x="9.5" y="9" width="13" height="6" rx="1" fill="#f7f1e8" stroke="#e88aa6" stroke-width="1.5"/><rect x="15.4" y="4" width="1.2" height="5" fill="#15212c"/><ellipse cx="16" cy="3" rx="1.3" ry="1.8" fill="#f08a1a"/></svg><b>Taart</b><small class="breekbaar">breekbaar</small></span>
-        <span><svg viewBox="0 0 32 24" aria-hidden="true"><path d="M4 14q12-15 24 0z" fill="#e8dfcc" stroke="#b5a68a" stroke-width="1.2"/><rect x="12.5" y="14" width="7" height="8" rx="2.5" fill="#f4f1ea" stroke="#b5a68a" stroke-width="1.2"/></svg><b>Champignons</b><small>vers</small></span>
+        <span><svg viewBox="0 0 32 24" aria-hidden="true"><circle cx="16" cy="13" r="9" fill="#86b350"/><path d="M16 4v18M9 7q7 6 0 12M23 7q-7 6 0 12" stroke="#5f8a35" stroke-width="1.4" fill="none"/></svg><b>Kool</b><small>van de Koolweg</small></span>
         <span><svg viewBox="0 0 32 24" aria-hidden="true"><path d="M16 23V11M16 23 10 9M16 23l6-13" stroke="#3f7a35" stroke-width="1.6" fill="none"/><circle cx="16" cy="8" r="3.6" fill="#d8263a"/><circle cx="9.5" cy="7.5" r="3.2" fill="#f2c12e"/><circle cx="22.5" cy="8.5" r="3.2" fill="#e86aa0"/></svg><b>Bloemen</b><small class="fooi">extra fooi</small></span>
         <span><svg viewBox="0 0 32 24" aria-hidden="true"><path d="M10 10h12v11.5a1.5 1.5 0 0 1-1.5 1.5h-9a1.5 1.5 0 0 1-1.5-1.5z" fill="#c9ccce"/><path d="M12.5 6h7l2.5 4H10z" fill="#aeb2b5"/><rect x="11.5" y="2.5" width="9" height="3.5" rx="1" fill="#8f959a"/></svg><b>Melkbussen</b><small class="zwaar">zwaar</small></span>
         <span><svg viewBox="0 0 32 24" aria-hidden="true"><rect x="3" y="5" width="26" height="17" rx="1.5" fill="#d6ecf2" stroke="#2a2c2e" stroke-width="1.6"/><rect x="4" y="10" width="24" height="11" fill="#4f9fc8" opacity=".55"/><ellipse cx="14" cy="15" rx="4.2" ry="2.5" fill="#f08a1a"/><path d="M18 15l4.5-3v6z" fill="#f08a1a"/></svg><b>Aquarium</b><small class="klotst">klotst</small></span>
@@ -3072,14 +3086,24 @@ const LADING = [
     au: 'Krak!', kapot: 'De eieren zijn kapot', heel: 'heel' },
   { id: 'taart', kort: 'Taart', naam: 'een verjaardagstaart', regel: 'breekbaar, en ze wachten erop', pay: 1.5, tip: 1.3, tipT: 0.8, klap: 0.6, bult: 0.06, w: 1.5,
     au: 'Plets!', kapot: 'De taart is ingezakt', heel: 'heel' },
-  { id: 'champignons', kort: 'Champignons', naam: 'champignons van de kwekerij', regel: 'vers uit de kwekerij', pay: 1.1, tip: 1.1, tipT: 1, w: 2.5 },
+  { id: 'kool', kort: 'Kool', naam: 'kool van de Koolweg', regel: 'vers van de Koolweg', pay: 1.1, tip: 1.1, tipT: 1, w: 2.5 },
   { id: 'bloemen', kort: 'Bloemen', naam: 'een bos bloemen', regel: 'iemand is jarig: extra fooi', pay: 1, tip: 1.6, tipT: 1, w: 2 },
   { id: 'melk', kort: 'Melkbussen', naam: 'melkbussen', regel: 'zwaar: je trekt minder snel op', pay: 1.45, tip: 1, tipT: 1.25, zwaar: true, w: 1.5 },
   { id: 'aquarium', kort: 'Aquarium', naam: 'een aquarium met een goudvis', regel: 'klotst: rustig remmen en sturen', pay: 1.6, tip: 1, tipT: 1.15, klap: 0.5, bult: 0.04, klots: 0.09, w: 1.2,
     au: 'Klots!', kapot: 'Het aquarium is leeggeklotst', heel: 'vol' },
+  // alleen in de verhalen van toen
+  { id: 'eierkisten', kort: 'Eierkisten', naam: 'eierkisten', regel: 'heel breekbaar', pay: 1, tip: 1, tipT: 1.1, klap: 0.6, bult: 0.12, pool: false,
+    au: 'Krak!', kapot: 'Struif op de weg: de eieren zijn kapot', heel: 'heel' },
+  { id: 'helm', kort: 'Gouden helm', naam: 'de Gouden Helm', regel: 'kostbaar en breekbaar', pay: 1, tip: 1, tipT: 1.2, klap: 0.5, bult: 0.05, pool: false,
+    au: 'Deuk!', kapot: 'De helm is zwaar beschadigd', heel: 'gaaf' },
+  { id: 'botanici', kort: 'Botanici', naam: 'twee botanici', regel: 'rustig rijden', pay: 1, tip: 1.2, tipT: 1, klap: 0.4, bult: 0.05, klots: 0.08, pool: false,
+    au: 'Hé, rustig aan!', kapot: 'De botanici stappen boos uit', heel: 'tevreden' },
+  { id: 'bijen', kort: 'Bijenkasten', naam: 'bijenkasten', regel: 'bij een klap ontsnappen de bijen', pay: 1, tip: 1, tipT: 1.1, klap: 0.35, bult: 0.03, zwerm: true, pool: false,
+    au: 'Bzzz!', kapot: 'De bijen zijn gevlogen', heel: 'in de kast' },
+  { id: 'turf', kort: 'Turfstrooisel', naam: 'balen turfstrooisel', regel: 'zwaar en stoffig', pay: 1, tip: 1, tipT: 1.25, zwaar: true, stof: true, pool: false },
 ];
 function pickItem(prev) {
-  const opts = LADING.filter((l) => l !== prev), tot = opts.reduce((s, l) => s + l.w, 0);
+  const opts = LADING.filter((l) => l !== prev && l.pool !== false), tot = opts.reduce((s, l) => s + l.w, 0);
   let x = Math.random() * tot; for (const l of opts) { x -= l.w; if (x <= 0) return l; } return opts[0];
 }
 const CARGO = (() => {
@@ -3118,11 +3142,47 @@ const CARGO = (() => {
       cyl(g, 0.01, 0.01, 0.09, kaars, 0, y + 0.045, 0, 6);
       ball(g, 0.014, M('#ffb02e', { emissive: '#ff8a00', emissiveIntensity: 2.5 }), 0, y + 0.1, 0, 1.6);
     },
-    champignons(g) {
-      const krat = M('#b98a52'), hoed = M('#efe7d6', { roughness: 0.9 });
-      for (const [x, z] of [[-0.28, -0.26], [0.28, -0.26], [-0.28, 0.26], [0.28, 0.26]]) {
-        box(g, 0.52, 0.18, 0.48, krat, x, 0.09, z);
-        for (let k = 0; k < 9; k++) { const m = add(g, new THREE.SphereGeometry(0.06, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), hoed, x - 0.15 + (k % 3) * 0.15, 0.17, z - 0.14 + Math.floor(k / 3) * 0.14); m.scale.y = 0.8; }
+    eierkisten(g) {
+      const krat = M('#a5814f'), tray = M('#b8b2a6'), wit = M('#f2eee6'), bruin = M('#c9955f');
+      for (const x of [-0.27, 0.27]) for (const z of [-0.24, 0.24]) {
+        box(g, 0.5, 0.18, 0.44, krat, x, 0.09, z); box(g, 0.5, 0.18, 0.44, krat, x, 0.27, z); box(g, 0.46, 0.03, 0.4, tray, x, 0.375, z);
+        for (let i = 0; i < 5; i++) for (let j = 0; j < 4; j++) ball(g, 0.032, (i * 3 + j) % 4 ? bruin : wit, x - 0.18 + i * 0.09, 0.41, z - 0.135 + j * 0.09, 1.25);
+      }
+    },
+    helm(g) {
+      const kist = M('#a5814f'), kussen = M('#8a1020', { roughness: 1 }), goud = M('#d9a93a', { metalness: 1, roughness: 0.28 });
+      box(g, 0.62, 0.22, 0.62, kist, 0, 0.11, 0); box(g, 0.52, 0.08, 0.52, kussen, 0, 0.26, 0);
+      const kap = add(g, new THREE.SphereGeometry(0.18, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), goud, 0, 0.3, 0); kap.scale.set(1, 1.15, 1.2);
+      box(g, 0.035, 0.09, 0.42, goud, 0, 0.5, 0);
+      for (const s of [-1, 1]) { const w = box(g, 0.02, 0.17, 0.13, goud, s * 0.17, 0.28, -0.06); w.rotation.z = s * 0.25; }
+      const nek = add(g, new THREE.CylinderGeometry(0.2, 0.22, 0.08, 16, 1, true, -1.1, 2.2), goud, 0, 0.32, 0.02); nek.rotation.y = Math.PI;
+    },
+    botanici(g) {
+      // twee heren met een hoed, naast elkaar op kratten met hun gezicht naar achteren, en een botaniseertrommel
+      const krat = M('#b98a52'), groen = M('#3f6a40', { metalness: 0.4, roughness: 0.5 }), pers = M('#6b4a2e');
+      const pakken = [['#7a5a3a', '#e6b590', '#4a4038', '#8a7a6a', '#2a2420', '#1a1a1a'], ['#5f6668', '#d39c74', '#3a3d40', '#c8c4b8', '#1a1a1a', '#2a2a2a']];
+      [-1, 1].forEach((s, k) => {
+        box(g, 0.4, 0.3, 0.36, krat, s * 0.3, 0.15, -0.3);
+        const p = new THREE.Group(); p.position.set(s * 0.3, 0.32 - 0.93, -0.3); p.rotation.y = Math.PI; g.add(p);
+        const cols = pakken[k].map((c) => new THREE.Color(c));
+        const body = LIFE.withColor(LIFE.PG.body[2].clone()); LIFE.paint(body, cols); add(p, body, LIFE.lifeMat, 0, 0, 0);
+        for (const lx of [-0.085, 0.085]) { const leg = LIFE.withColor(LIFE.PG.leg.clone()); LIFE.paint(leg, cols); const l = add(p, leg, LIFE.lifeMat, lx, 0.9, 0); l.rotation.x = -1.5; }
+        for (const ax of [-0.205, 0.205]) { const arm = LIFE.withColor(LIFE.PG.arm.clone()); LIFE.paint(arm, cols); const a = add(p, arm, LIFE.lifeMat, ax, 1.47, 0); a.rotation.x = -0.45; a.rotation.z = Math.sign(ax) * -0.12; }
+      });
+      const trommel = add(g, new THREE.CylinderGeometry(0.08, 0.08, 0.36, 14), groen, 0.3, 0.08, 0.38); trommel.rotation.z = Math.PI / 2;
+      box(g, 0.34, 0.08, 0.26, pers, -0.3, 0.04, 0.4);
+    },
+    bijen(g) {
+      const kast = M('#f0d890'), dak = M('#8a5a3a'), bak = M('#e2bf62'), gat = M('#2a1d14');
+      for (const x of [-0.28, 0.28]) {
+        box(g, 0.44, 0.32, 0.4, kast, x, 0.16, 0); box(g, 0.44, 0.18, 0.4, bak, x, 0.41, 0); box(g, 0.52, 0.05, 0.48, dak, x, 0.525, 0); box(g, 0.2, 0.025, 0.02, gat, x, 0.05, -0.205);
+      }
+      g.userData.bijen = true;
+    },
+    turf(g) {
+      const baal = M('#5a3e2a', { roughness: 1 }), band = M('#2a2420');
+      for (const [x, y, z] of [[-0.27, 0.18, -0.23], [0.27, 0.18, -0.23], [-0.27, 0.18, 0.23], [0.27, 0.18, 0.23], [0, 0.53, 0]]) {
+        box(g, 0.5, 0.35, 0.42, baal, x, y, z); for (const bx of [-0.12, 0.12]) box(g, 0.025, 0.36, 0.43, band, x + bx, y, z);
       }
     },
     bloemen(g) {
@@ -3160,7 +3220,7 @@ const CARGO = (() => {
     },
   };
   const models = new Map();
-  const model = (id) => { if (!models.has(id)) { const g = new THREE.Group(); BUILD[id](g); g.traverse((o) => { if (o.isMesh && !o.material.transparent) o.castShadow = true; }); g.userData = { fish, water }; fish = water = null; models.set(id, g); } return models.get(id); };
+  const model = (id) => { if (!models.has(id)) { const g = new THREE.Group(); BUILD[id](g); g.traverse((o) => { if (o.isMesh && !o.material.transparent) o.castShadow = true; }); Object.assign(g.userData, { fish, water }); fish = water = null; models.set(id, g); } return models.get(id); };
   // ankerpunt per wagen: de laadbak van de Ape, anders een imperiaal op het dak
   const anchor = new THREE.Group(), rack = new THREE.Group();
   { const zwart = M('#1b1d1f', { roughness: 0.6 });
@@ -3173,23 +3233,51 @@ const CARGO = (() => {
     refresh();
   }
   function refresh() {
-    const item = GAME.job?.item ?? (state.mode === 'intro' ? GAME.next?.item : null), id = item ? item.id : VEH.id === 'ape' ? 'kool' : null;
+    const j = GAME.job, item = j ? (j.stage === 'ophalen' ? null : j.item) : state.mode === 'intro' ? GAME.next?.item : null;
+    let id = item ? item.id : !j && VEH.id === 'ape' ? 'kool' : null;
+    if (id === 'botanici' && VEH.id !== 'ape') id = null; // passagiers zitten binnen, niet op het dak
     if (shown === id) return;
     if (shown) anchor.remove(model(shown));
     shown = id; if (id) { const m = model(id); m.position.y = VEH.cargo.rack ? 0.09 : 0; anchor.add(m); }
   }
+  // bijen: een paar rond de kasten, en na een klap een zwerm rond de cabine
+  const bees = new THREE.InstancedMesh(new THREE.SphereGeometry(0.028, 6, 4), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.6 }), 36);
+  bees.frustumCulled = false; bees.visible = false; scene.add(bees);
+  for (let k = 0; k < 36; k++) bees.setColorAt(k, new THREE.Color(k % 3 ? '#e0a800' : '#1a1a1a'));
+  const bp = new THREE.Vector3(), bm = new THREE.Matrix4();
+  let swarmUntil = 0;
+  function bzz(now) { swarmUntil = now + 7000; }
+  function animateBees(now) {
+    const hives = shown && models.get(shown)?.userData.bijen, swarm = now < swarmUntil;
+    bees.visible = !!(hives || swarm); if (!bees.visible) return;
+    const t = now / 1000, n = swarm ? 36 : 10;
+    if (swarm) bp.set(ape.position.x - Math.sin(state.h) * 1.2, ape.position.y + 1.3, ape.position.z - Math.cos(state.h) * 1.2); else anchor.getWorldPosition(bp);
+    for (let k = 0; k < 36; k++) {
+      if (k >= n) { bm.makeScale(0, 0, 0); bees.setMatrixAt(k, bm); continue; }
+      const r = swarm ? 0.6 + (k % 5) * 0.25 : 0.25 + (k % 3) * 0.1, a = t * (2 + (k % 4)) + k * 1.7;
+      bm.makeTranslation(bp.x + Math.cos(a) * r, bp.y + (swarm ? Math.sin(t * 3 + k) * 0.5 : 0.55 + Math.sin(t * 4 + k) * 0.15), bp.z + Math.sin(a * 1.3) * r); bees.setMatrixAt(k, bm);
+    }
+    bees.instanceMatrix.needsUpdate = true;
+  }
   // de goudvis zwemt heen en weer, het water helt mee als je stuurt of remt
   function animate(now, lat, lon) {
+    animateBees(now);
+    const st = GAME.job && GAME.job.stage !== 'ophalen' && GAME.job.item.stof && state.mode === 'drive';
+    $('dust').style.opacity = st ? String(Math.min(0.9, 0.45 + Math.max(0, (dustPuff - now) / 1500) * 0.45)) : '0';
     const m = shown && models.get(shown); if (!m?.userData.fish) return;
     const f = m.userData.fish, t = now / 1000; f.position.x = Math.sin(t * 0.9) * 0.2; f.position.z = Math.sin(t * 1.7) * 0.08; f.rotation.y = Math.cos(t * 0.9) > 0 ? 0 : Math.PI;
     const w = m.userData.water; w.rotation.z += (clamp(-lat * 0.03, -0.25, 0.25) - w.rotation.z) * 0.2; w.rotation.x += (clamp(lon * 0.03, -0.25, 0.25) - w.rotation.x) * 0.2;
   }
-  return { attach, refresh, animate };
+  let dustPuff = 0;
+  return { attach, refresh, animate, bzz, puff: (now) => { dustPuff = now + 1500; } };
 })();
 // schade aan breekbare lading: klappen, bulten en klotsen kosten een deel van wat het adres oplevert
 function cargoShock(kind, s, now = performance.now()) {
   const j = GAME.job; if (!j || state.mode !== 'drive' || !(s > 0)) return;
-  const it = j.item, add = (it[kind] || 0) * s; if (!add || j.dmg >= 1) return;
+  const it = j.item; if (j.stage === 'ophalen') return;
+  if (it.stof && kind !== 'klots') CARGO.puff(now); // turfstof dwarrelt op
+  const add = (it[kind] || 0) * s; if (!add || j.dmg >= 1) return;
+  if (it.zwerm && kind === 'klap') CARGO.bzz(now);
   j.dmg = Math.min(1, j.dmg + add);
   if (j.dmg >= 1) { showToast(it.kapot, 'dit adres levert niets meer op', 2200); beep([180, 120], 0.3, 'sawtooth', 0.12); }
   else if (now > (GAME.shockT || 0) && (kind !== 'klots' || j.dmg - (j.dmgShown || 0) > 0.08)) {
@@ -3210,10 +3298,175 @@ function pickJob(x, z, first) {
   const a = cand[Math.floor(Math.random() * cand.length)];
   return { a, m: d.get(a.node) };
 }
-function startJob(a, item) {
-  Object.assign(DEST, { addr: a.addr, gate: a.gate, post: a.post, node: a.node, label: a.label, num: a.num });
+// ------------------------------------------------------------------ Helenaveen van toen: verhalen en weetjes
+// Om de paar adressen wacht een verhaal uit de geschiedenis van het dorp: eerst iets ophalen, dan wegbrengen. En langs
+// de weg staan bruine bordjes met een gouden munt erboven; rijd je erlangs, dan krijg je een weetje over vroeger.
+// De feiten komen van helenaveenvantoen.nl, DeurneWiki en de straatnaamverklaring van André Vervuurt.
+
+// een plek op de kaart als bestemming: het dichtstbijzijnde stuk rijweg, met een paaltje aan de kant van de plek
+function makePlace(label, x, z, noun) {
+  let best = null;
+  for (let gx = -1; gx <= 1; gx++) for (let gz = -1; gz <= 1; gz++) for (const [ri, i] of roadGrid.near(x + gx * 25, z + gz * 25)) {
+    const r = ROADS[ri]; if (!r.d || r.b || !GRAPH.has(r.n[i]) || !GRAPH.has(r.n[i + 1])) continue;
+    const s = segDist(x, z, r.pts[i][0], r.pts[i][1], r.pts[i + 1][0], r.pts[i + 1][1]); if (!best || s.d < best.d) best = { ...s, r, i };
+  }
+  if (!best) return null;
+  const { r, i } = best, [ax, az] = r.pts[i], [bx, bz] = r.pts[i + 1], L = Math.hypot(bx - ax, bz - az) || 1;
+  let ux = x - best.x, uz = z - best.z, ul = Math.hypot(ux, uz);
+  if (ul < r.w / 2 + 1) { ux = -(bz - az) / L; uz = (bx - ax) / L; ul = 1; } // de plek ligt op de weg: paaltje rechts
+  const off = r.w / 2 + 1.4, px = best.x + (ux / ul) * off, pz = best.z + (uz / ul) * off;
+  return { label, street: r.name, num: '★', gate: [best.x, best.z], post: [px, pz], node: best.t < 0.5 ? r.n[i] : r.n[i + 1], addr: [x, z], noun };
+}
+// een punt op een straat: het dichtst bij hint, of op een fractie van de langste stukken
+function streetPoint(name, hint, frac = 0.5) {
+  const rs = ROADS.filter((r) => r.name === name && r.d); if (!rs.length) return null;
+  if (hint) { let best = null; for (const r of rs) for (let i = 0; i < r.pts.length - 1; i++) { const s = segDist(hint[0], hint[1], r.pts[i][0], r.pts[i][1], r.pts[i + 1][0], r.pts[i + 1][1]); if (!best || s.d < best.d) best = s; } return [best.x, best.z]; }
+  const r = rs.reduce((a, b) => (b.pts.length > a.pts.length ? b : a)); const cum = [0]; for (let i = 1; i < r.pts.length; i++) cum.push(cum[i - 1] + Math.hypot(r.pts[i][0] - r.pts[i - 1][0], r.pts[i][1] - r.pts[i - 1][1]));
+  const d = cum.at(-1) * frac; let i = 0; while (i < cum.length - 2 && cum[i + 1] < d) i++; const t = (d - cum[i]) / ((cum[i + 1] - cum[i]) || 1);
+  return [r.pts[i][0] + (r.pts[i + 1][0] - r.pts[i][0]) * t, r.pts[i][1] + (r.pts[i + 1][1] - r.pts[i][1]) * t];
+}
+const addrOf = (label) => ADDRS.find((a) => a.label === label);
+const pickOne = (a) => (a.length ? a[Math.floor(Math.random() * a.length)] : null);
+const onStreet = (street) => ADDRS.filter((a) => a.street === street);
+
+// ---- verhalen: wat je ophaalt, waar het heen moet, en de geschiedenis erachter
+// van/naar geven een plek terug (een echt adres of een punt op een straat); far: hoe ver de twee uit elkaar liggen
+const VERHALEN = [
+  { id: 'eierbond', jaar: 'rond 1950', titel: 'Eierkisten voor de veiling',
+    van: () => { const a = pickOne(onStreet('Koolweg')); return a && { ...a, noun: 'de kippenhouder' }; }, wie: 'bij een kippenhouder aan de Koolweg',
+    naar: () => { const p = streetPoint('Sevenumseweg', [BX1, 1010]); return p && makePlace('Sevenumseweg', p[0], p[1], 'de eierwagen'); }, waar: 'naar de eierwagen op de Sevenumseweg',
+    lading: 'eierkisten', pay: 2.2,
+    intro: 'Rond 1960 liepen er in Helenaveen 25.000 kippen rond, en de eieren gingen naar de veiling in Venlo. Haal de eierkisten op bij een kippenhouder aan de Koolweg.',
+    geladen: 'Rij rustig: wortelbulten zijn funest voor eieren. Er reed hier ooit een eierwagen tegen een boom, dat gaf struif op de weg.',
+    klaar: 'De Sevenumseweg heette vroeger de Tweede Wiek. Over deze weg ging de groente naar de veiling in Venlo.' },
+  { id: 'melk', jaar: 'rond 1930', titel: 'Warme melk voor de kaasboerin',
+    van: () => { const a = pickOne(ADDRS.filter((x) => Math.hypot(x.gate[0] - state.x, x.gate[1] - state.z) < 700)); return a && { ...a, noun: 'de boerderij' }; }, wie: 'bij een boerderij',
+    naar: (from) => { const c = ADDRS.filter((x) => Math.hypot(x.gate[0] - from.gate[0], x.gate[1] - from.gate[1]) > 500 && Math.hypot(x.gate[0] - from.gate[0], x.gate[1] - from.gate[1]) < 1100); const a = pickOne(c.length ? c : ADDRS); return { ...a, noun: 'de kaasboerin' }; }, waar: 'naar de kaasboerin op een Koningshoeve',
+    lading: 'melk', pay: 2, warm: true,
+    intro: 'Vanaf 1927 maakten kaasboeren uit Holland kaas op de Koningshoeven, elke dag van melk die nog warm moest zijn, ook op zondag. Haal de melkbussen op bij een boerderij.',
+    geladen: 'De melk moet warm aankomen: haal de kaasboerin voordat de tijd om is.',
+    klaar: 'De Koningshoeven kwamen er met steun van het Fonds Koning Willem III, dat nog altijd bestaat.' },
+  { id: 'helm', jaar: '1910', titel: 'De Gouden Helm',
+    van: () => { const a = pickOne(onStreet('Helmhof')); if (a) return { ...a, noun: 'Gebbel Smolenaars' }; const p = streetPoint('Helmhof'); return p && makePlace('Helmhof', p[0], p[1], 'Gebbel Smolenaars'); }, wie: 'bij turfsteker Gebbel Smolenaars',
+    naar: () => { const p = streetPoint('Koning Willem III-plein'); return p && makePlace('Koning Willem III-plein', p[0], p[1], 'het dorpsplein'); }, waar: 'naar het dorpsplein',
+    lading: 'helm', pay: 3,
+    intro: 'Op 17 juni 1910 vond turfsteker Gebbel Smolenaars in het veen een verguld zilveren Romeinse ruiterhelm. Hij liet hem voor een dubbeltje per persoon bekijken. Haal de helm bij hem op.',
+    geladen: 'Breng hem heel naar het dorpsplein: hij is ruim vijftienhonderd jaar oud.',
+    klaar: 'Smolenaars kreeg 1.200 gulden voor de helm. Hij ligt nu in het Rijksmuseum van Oudheden in Leiden.' },
+  { id: 'kermis', jaar: '1895', titel: 'De kermistaxi',
+    van: () => { const p = streetPoint('Koning Willem III-plein'); return p && makePlace('Koning Willem III-plein', p[0], p[1], 'de kermis'); }, wie: 'op de kermis',
+    naar: () => { const g = [BX0 + (BX1 - BX0) * 0.68, BZ1 - 40]; let best = null; for (const r of ROADS) { if (!r.d || r.b) continue; for (const [x, z] of r.pts) { if (z > BZ1 - 30) continue; const d = Math.hypot(x - g[0], z - g[1]); if (!best || d < best.d) best = { d, x, z }; } } return best && makePlace('De weg naar Meijel', best.x, best.z, 'de weg naar Meijel'); }, waar: 'naar de rand van het dorp, richting Meijel',
+    lading: 'botanici', pay: 2.2,
+    intro: 'In 1895 kregen twee botanici door de kermis geen bed in Helenaveen. De rijtuigbaas was lichtelijk aangeschoten en reed altijd erg wild, dus een nuchtere knecht bracht ze naar Meijel. Jij bent die knecht.',
+    geladen: 'Rij netjes: hard remmen, scherpe bochten en bulten vinden je passagiers niks.',
+    klaar: 'In 1895 was de kermis nog een eetkermis met danstenten. Tegenwoordig staat hij op de tweede zondag van september op het Koning Willem III-plein.' },
+  { id: 'bijen', jaar: 'rond 1930', titel: 'Bijen voor meester Theelen',
+    van: () => { const a = pickOne(ADDRS.filter((x) => Math.hypot(x.gate[0] - state.x, x.gate[1] - state.z) < 800 && x.street !== 'Meester Theelenstraat')); return a && { ...a, noun: 'de imker' }; }, wie: 'bij een imker',
+    naar: () => { const a = pickOne(onStreet('Meester Theelenstraat')); if (a) return { ...a, noun: 'meester Theelen' }; const p = streetPoint('Meester Theelenstraat'); return p && makePlace('Meester Theelenstraat', p[0], p[1], 'meester Theelen'); }, waar: 'naar meester Theelen',
+    lading: 'bijen', pay: 2,
+    intro: 'Meester Theelen was vanaf 1922 schoolhoofd in Helenaveen, en ook imker. Haal een paar bijenkasten voor hem op.',
+    geladen: 'Voorzichtig: bij een flinke klap ontsnappen de bijen.',
+    klaar: 'Meester Theelen richtte ook de voetbalclub op en gaf tuinbouwcursussen. In de oorlog hielp hij neergestorte vliegers onderduiken.' },
+  { id: 'turf', jaar: '1890', titel: 'Turfstrooisel voor Londen',
+    van: () => { const p = streetPoint('Rector Nuijtsstraat'); return p && makePlace('Rector Nuijtsstraat', p[0], p[1], 'de turfstrooiselfabriek'); }, wie: 'bij de turfstrooiselfabriek',
+    naar: () => { const a = pickOne(onStreet('Turfaak')); if (a) return { ...a, noun: 'de turfaak' }; const p = streetPoint('Turfaak'); return p && makePlace('Turfaak', p[0], p[1], 'de turfaak'); }, waar: 'naar de turfaak aan de vaart',
+    lading: 'turf', pay: 2,
+    intro: 'Aan de Rector Nuijtsstraat stond de eerste turfstrooiselfabriek van Nederland, uit 1881. Balen van 150 kilo gingen naar de paardenstallen van onder meer Londen en Parijs.',
+    geladen: 'Zwaar, en stoffig: de werklieden kregen het stof duimen dik op hun kleren.',
+    klaar: 'De turf ging met aken over de Helenavaart. Op de terugweg namen ze stadsvuil mee als mest, met munten en pijpenkoppen erin.' },
+];
+
+// ---- het verhaalbord: een kaartje in beeld met het jaartal, de titel en de geschiedenis
+let storyTimer = 0;
+function showStory(head, title, text, ms = 9000) {
+  const el = $('story'); $('storyHead').textContent = head; $('storyTitle').textContent = title; $('storyText').textContent = text;
+  el.hidden = false; el.classList.remove('in'); void el.offsetWidth; el.classList.add('in');
+  clearTimeout(storyTimer); storyTimer = setTimeout(() => { el.hidden = true; }, ms);
+}
+$('story').addEventListener('pointerdown', (e) => { e.preventDefault(); $('story').hidden = true; });
+
+// een verhaal kiezen dat deze dienst nog niet is geweest, met een ophaal- en een afleverplek die te bereiken zijn
+function pickStory() {
+  const done = GAME.stories || [];
+  for (const v of VERHALEN.filter((x) => !done.includes(x.id)).sort(() => Math.random() - 0.5)) {
+    const from = v.van(); if (!from) continue; const to = v.naar(from); if (!to) continue;
+    const d = new Map(); shortest(from.node, d, null); if (!d.has(to.node) || !GRAPH.has(nearestNode(state.x, state.z))) continue;
+    return { v, from, to, m: d.get(to.node) };
+  }
+  return null;
+}
+
+// ---- weetjes langs de weg
+const WEETJES = [
+  { id: 'kazemat', at: ['adres', 'Soemeersingel 25'], titel: 'De kazemat', jaar: '1940', tekst: 'In de tuin van deze oude domineeswoning staat de enige kazemat die nog over is van de Peel-Raamstelling in Helenaveen.' },
+  { id: 'kerk', at: ['adres', 'Soemeersingel 27'], titel: 'De protestantse kerk', jaar: '1867', tekst: 'Helenaveen was een gemengd dorp: katholieken en protestantse veenwerkers uit Drenthe, Overijssel en Duitsland. Deze kerk is uit 1867.' },
+  { id: 'swalue', at: ['straat', 'Dominee Swaluestraat'], titel: 'Dominee Swalue', jaar: '1870', tekst: 'E.B. Swalue uit Goes werd in 1870 de eerste eigen dominee. Zijn grafsteen zit in de gevel van de protestantse kerk.' },
+  { id: 'fabriek', at: ['straat', 'Rector Nuijtsstraat'], titel: 'De turfstrooiselfabriek', jaar: '1881', tekst: 'Aan deze straat stond de eerste turfstrooiselfabriek van Nederland. In mei 2025 brandde het monument grotendeels af.' },
+  { id: 'kool', at: ['straat', 'Koolweg', [-60, -260]], titel: 'Kool onder glas', jaar: 'rond 1900', tekst: 'De Koolweg is genoemd naar de kool die hier onder glazen klokken werd gekweekt. Tot 1980 was hij een teerlaag vol gaten en kuilen.' },
+  { id: 'zoeklicht', at: ['adres', 'Koolweg 40'], titel: 'Het zoeklicht', jaar: '1941', tekst: 'Hier stond in de oorlog een Duits zoeklicht. Jongens die "pang pang" riepen, kregen de schijnwerper vol in hun gezicht.' },
+  { id: 'vaart', at: ['straat', 'Soemeersingel', [120, 520]], titel: 'Een privékanaal', jaar: '1853', tekst: 'De Helenavaart, 15,7 km lang, was van de Maatschappij. Tot na de oorlog dronken de bewoners het kanaalwater.' },
+  { id: 'soemeer', at: ['straat', 'Soemeersingel', [-330, -700]], titel: 'Het Soemeer', jaar: 'sage', tekst: 'De Soemeersingel loopt dwars door het oude Soemeer. Volgens de sage was het de ingang van de hel, en op kerstnacht luidt er een verzonken klok.' },
+  { id: 'werf', at: ['straat', 'Geldersestraat', [600, 1480]], titel: 'De scheepswerf', jaar: '1860', tekst: 'Bij de Geldersestraat bouwde de Maatschappij haar eigen turfaken. In 1875 voeren er 32 aken en 2 stoomsleepboten.' },
+  { id: 'corte', at: ['adres', 'Geldersestraat 9'], titel: 'Jules de Corte', jaar: '', tekst: 'Zanger Jules de Corte woonde aan de Geldersestraat. Het carillon van Helenaveen is naar hem genoemd.' },
+  { id: 'koning', at: ['straat', 'Koning Willem III-plein'], titel: 'Koning Willem III', jaar: '1888', tekst: 'De koning was een jachtvriend van de familie Van de Griendt en schold in 1888 25.000 gulden aan schulden van arbeiders kwijt. Nu staat hier de kermis.' },
+  { id: 'helm', at: ['straat', 'Helmhof'], titel: 'De Gouden Helm', jaar: '1910', tekst: 'Turfsteker Gebbel Smolenaars vond een verguld zilveren Romeinse ruiterhelm. Hij ligt nu in het Rijksmuseum van Oudheden.' },
+  { id: 'theelen', at: ['straat', 'Meester Theelenstraat'], titel: 'Meester Theelen', jaar: '1922', tekst: 'Schoolhoofd, imker en oprichter van de voetbalclub. Wie straf kreeg, moest in het turfhok.' },
+  { id: 'pastoor', at: ['straat', 'Pastoor Kerssemakersstraat'], titel: 'De pastoor en het café', jaar: '1896', tekst: 'Pastoor Kerssemakers controleerde café Van Oers op drankmisbruik en nam heksenverhalen serieus.' },
+  { id: 'maatschappij', at: ['straat', 'Maatschappijstraat'], titel: 'De Maatschappij', jaar: '1858', tekst: 'Alle huizen en alle grond waren van de Maatschappij Helenaveen. Tot 1872 moesten de arbeiders in de Maatschappijwinkel kopen.' },
+  { id: 'eiken', at: ['straat', 'Helenastraat'], titel: 'Laanbomen', jaar: '1875', tekst: 'De Maatschappij plantte bomen langs al haar wegen, in 1875 eiken langs de Helenastraat. In 2001 dreigden de laanbomen te verdrinken door hoger grondwater.' },
+  { id: 'mariaveen', at: ['adresstraat', 'Kamp Mariaveen'], titel: 'Kamp Mariaveen', jaar: '1941', tekst: 'Eerst een werkkamp, na de oorlog een noodklooster met meisjesschool, en sinds 1980 het Biologisch Station van Staatsbosbeheer.' },
+  { id: 'luchtbed', at: ['straat', 'Soemeersingel', [180, 760]], titel: 'Luchtbedden op de vaart', jaar: '2001', tekst: '59 jongeren legden op het kanaal een rij luchtbedden van 101,20 meter: een record voor het Guinness Book.' },
+];
+const TOEN = (() => {
+  const KEY = 'helenaveen-weetjes';
+  let found = new Set(); try { found = new Set(JSON.parse(localStorage.getItem(KEY) || '[]')); } catch (e) { /* geen opslag */ }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...found])); } catch (e) { /* geen opslag */ } };
+  // bordje: bruine paal met een bruin bord (zoals toeristische borden), erboven een draaiende gouden munt
+  const paal = new THREE.MeshStandardMaterial({ color: '#5a3a24', roughness: 0.8 }), goud = new THREE.MeshStandardMaterial({ color: '#e8b830', metalness: 0.9, roughness: 0.3, emissive: '#b07a00', emissiveIntensity: 1.1 });
+  const coinGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.08, 28); coinGeo.rotateX(Math.PI / 2);
+  const signs = [];
+  for (const w of WEETJES) {
+    let p = null; const [kind, key, hint] = w.at;
+    if (kind === 'adres') { const a = addrOf(key); if (a) p = { x: a.post[0], z: a.post[1] }; }
+    else if (kind === 'adresstraat') { const a = onStreet(key)[0]; if (a) p = { x: a.post[0], z: a.post[1] }; }
+    else { const q = streetPoint(key, hint); if (q) { const pl = makePlace(w.titel, q[0] + 4, q[1] + 4); if (pl) p = { x: pl.post[0], z: pl.post[1] }; } }
+    if (!p || inWater(p.x, p.z)) continue;
+    const g = new THREE.Group(); g.position.set(p.x, 0, p.z); scene.add(g);
+    add(g, new THREE.BoxGeometry(0.09, 2.2, 0.09), paal, 0, 1.1, 0).castShadow = true;
+    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 128; const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+    const draw = () => { const c = cv.getContext('2d'); c.fillStyle = '#7a4a2a'; c.fillRect(0, 0, 256, 128); c.strokeStyle = '#f4efe2'; c.lineWidth = 6; c.strokeRect(6, 6, 244, 116);
+      c.fillStyle = '#f4efe2'; c.textAlign = 'center'; c.font = '800 24px Overpass, Arial, sans-serif'; c.fillText(w.jaar || 'Helenaveen', 128, 46); c.font = '900 26px Overpass, Arial, sans-serif';
+      const t = w.titel, wdt = c.measureText(t).width; if (wdt > 224) c.font = `900 ${Math.floor(26 * 224 / wdt)}px Overpass, Arial, sans-serif`; c.fillText(t, 128, 88); tex.needsUpdate = true; };
+    draw(); document.fonts?.load('900 26px Overpass').then(draw).catch(() => {});
+    const bord = add(g, new THREE.BoxGeometry(1.0, 0.5, 0.04), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 }), 0, 2.0, 0); bord.castShadow = true;
+    // het bord kijkt naar de weg
+    const road = roadAt(p.x, p.z, 4); if (road) g.rotation.y = Math.atan2(road.x - p.x, road.z - p.z);
+    const coin = add(g, coinGeo, goud, 0, 2.8, 0); coin.visible = !found.has(w.id);
+    signs.push({ w, g, coin, x: p.x, z: p.z });
+  }
+  let tick = 0;
+  function update(dt, now) {
+    for (const s of signs) if (s.coin.visible) { s.coin.rotation.y = now / 600; s.coin.position.y = 2.8 + Math.sin(now / 500 + s.x) * 0.08; }
+    if ((tick -= dt) > 0 || (state.mode !== 'drive' && state.mode !== 'roam')) return; tick = 0.15;
+    for (const s of signs) {
+      if (found.has(s.w.id) || Math.abs(s.x - state.x) > 12 || Math.abs(s.z - state.z) > 12 || Math.hypot(s.x - state.x, s.z - state.z) > 9) continue;
+      found.add(s.w.id); save(); s.coin.visible = false;
+      const pts = state.mode === 'drive' ? 25 : 0; GAME.score += pts;
+      beep([784, 988, 1319], 0.12, 'triangle', 0.18);
+      showStory(`Weetje van toen ${found.size} van ${signs.length}${pts ? ` · +${pts}` : ''}`, `${s.w.titel}${s.w.jaar && s.w.jaar !== 'sage' ? ` (${s.w.jaar})` : ''}`, s.w.tekst, 8000);
+    }
+  }
+  return { update, signs, get found() { return found.size; }, get total() { return signs.length; }, has: (id) => found.has(id) };
+})();
+
+// de bestemming zetten: adres of plek, route erheen, paaltje erbij
+function setDest(a) {
+  Object.assign(DEST, { addr: a.addr, gate: a.gate, post: a.post, node: a.node, label: a.label, num: a.num, noun: a.noun });
   routeToDest(); destGroup.userData.place(); destGroup.visible = true;
   currentRoute = routeFrom(state.x, state.z);
+}
+function startJob(a, item) {
+  setDest(a);
   const m = currentRoute.dist;
   // vast loon naar de afstand en de lading, plus fooi die wegloopt: wie er snel is krijgt alles
   GAME.job = { a, item, base: Math.round((50 + Math.round(m / 50) * 5) * item.pay), tip: Math.round(100 * item.tip), tipT: (m / 8 + 20) * item.tipT, t: 0, dmg: 0 };
@@ -3222,13 +3475,38 @@ function startJob(a, item) {
 }
 // wat het adres nu oplevert: loon plus wat er van de fooi over is, min wat er kapot is
 const reward = (j) => Math.round((j.base + j.tip * Math.max(0, 1 - j.t / j.tipT)) * (1 - j.dmg));
+// een verhaal begint met ophalen: de beloning hangt af van de afstand tussen ophalen en wegbrengen
+function startStoryJob({ v, from, to, m }) {
+  GAME.stories = [...(GAME.stories || []), v.id];
+  const item = LADING.find((l) => l.id === v.lading);
+  setDest(from);
+  GAME.job = { story: v, stage: 'ophalen', a: from, to, item, m, base: Math.round((50 + Math.round(m / 50) * 5) * v.pay), tip: Math.round(100 * item.tip), tipT: (m / 8 + 20) * item.tipT, t: 0, dmg: 0 };
+  $('navTo').textContent = from.label; $('navRule').textContent = v.wie;
+  CARGO.refresh();
+  showStory(`Verhaal van toen · ${v.jaar}`, v.titel, v.intro, 11000);
+}
+// aangekomen: bij een verhaal eerst laden, anders (of daarna) bezorgen
+function arrive() {
+  const j = GAME.job;
+  if (!j.story || j.stage !== 'ophalen') { deliver(); return; }
+  j.stage = 'bezorgen'; j.t = 0; setDest(j.to);
+  $('navTo').textContent = j.to.label; $('navRule').textContent = j.story.waar;
+  if (j.story.warm) j.warm = j.m / ((VEH.vmax / 3.6) * 0.55) + 25; // seconden voordat de melk afkoelt
+  CARGO.refresh();
+  beep([440, 554], 0.14, 'triangle', 0.2);
+  showToast('Geladen!', `nu ${j.story.waar}`, 2200);
+  showStory(`${j.story.titel} · ${j.story.jaar}`, `${j.item.kort} geladen`, j.story.geladen, 8000);
+}
 function deliver() {
   const j = GAME.job, pts = reward(j);
-  GAME.score += pts; GAME.delivered++;
+  GAME.score += pts; GAME.delivered++; if (j.story) GAME.storyDone = (GAME.storyDone || 0) + 1;
   beep([523, 659, 784], 0.22, 'triangle', 0.25); setTimeout(() => beep([1046], 0.35, 'triangle', 0.22), 230);
-  startJob(pickJob(state.x, state.z, false).a, pickItem(j.item));
+  // na elke twee gewone adressen een verhaal van toen, zolang er nog een is
+  const s = !j.story && GAME.delivered % 3 === 2 ? pickStory() : null;
+  if (s) startStoryJob(s); else startJob(pickJob(state.x, state.z, false).a, pickItem(j.item));
   const n = GAME.job;
-  showToast(`Bezorgd! +${pts}`, `nu ${n.item.naam} naar ${n.a.label}`, 2800);
+  if (j.story) showStory(`${j.story.titel} · bezorgd`, `+${pts} punten`, j.story.klaar, 9000);
+  showToast(`Bezorgd! +${pts}`, n.story ? `nu een verhaal van toen: ${n.story.titel.toLowerCase()}` : `nu ${n.item.naam} naar ${n.a.label}`, 2800);
 }
 
 // ------------------------------------------------------------------ minimap
@@ -3269,6 +3547,8 @@ function drawMinimap(x, z, heading) {
     const [gx, gz] = tp(DEST.gate[0], DEST.gate[1]);
     mg.fillStyle = '#ffd36a'; mg.strokeStyle = '#15212c'; mg.lineWidth = 2; mg.beginPath(); mg.arc(gx, gz, 7, 0, Math.PI * 2); mg.fill(); mg.stroke();
   }
+  mg.fillStyle = '#e0b030'; mg.strokeStyle = '#5a3a24'; mg.lineWidth = 2;
+  for (const w of TOEN.signs) { if (TOEN.has(w.w.id)) continue; const [p, q] = tp(w.x, w.z); mg.beginPath(); mg.arc(p, q, 5, 0, Math.PI * 2); mg.fill(); mg.stroke(); }
   mg.fillStyle = '#f4efe2'; mg.strokeStyle = '#15212c'; mg.lineWidth = 1.2;
   for (const a of TRAFFIC.agents) { if (!a.on) continue; const [p, q] = tp(a.x, a.z); mg.beginPath(); mg.arc(p, q, a.kind === 'bike' ? 2.2 : 3.6, 0, Math.PI * 2); mg.fill(); mg.stroke(); }
   const blink = Math.floor(performance.now() / 250) % 2;
@@ -3497,6 +3777,11 @@ function autopilot() {
   const blk = TRAFFIC.ahead(), waiting = blk < 6 + state.v * 1.5;
   state.autoWait = waiting && state.v < 0.5 ? (state.autoWait || 0) + 1 / 30 : 0;
   if (waiting && !(state.autoWait > 4 && state.autoWait < 9)) want = Math.min(want, Math.max(0, (blk - 2.5) * 0.6));
+  // vast tegen een muur of boom: even achteruit met tegenstuur, dan opnieuw
+  const pushing = want > 0.5 && Math.abs(state.v) < 0.3;
+  state.autoStuck = pushing ? (state.autoStuck || 0) + 1 / 30 : Math.max(0, (state.autoStuck || 0) - 1 / 30);
+  if (state.autoStuck > 3) { state.autoBack = 1.6; state.autoStuck = 0; }
+  if (state.autoBack > 0) { state.autoBack -= 1 / 30; return { gas: 0, brake: 1, steerIn: -Math.sign(near || 1) }; }
   return { gas: state.v < want ? 1 : 0, brake: state.v > want + 1.5 ? 1 : 0, steerIn: Math.max(-1, Math.min(1, near * 2.2)) };
 }
 
@@ -3732,7 +4017,7 @@ function updateNav(dt) {
   let hint = '';
   const ahead = roadAt(tx, tz, 1.0), next = ahead && ahead.r.d && ahead.r.name && ahead.r.name !== (road && road.r.name) ? ahead.r.name : '';
   const into = (n) => n + (/(straat|pad|hof|plein|veldje|aak)$/.test(n) ? ' in' : ' op');
-  if (direct < 40) hint = COPS.wanted ? 'Eerst de politie kwijt' : `Daar is nummer ${DEST.num}`;
+  if (direct < 40) hint = COPS.wanted ? 'Eerst de politie kwijt' : DEST.noun ? `Daar is ${DEST.noun}` : `Daar is nummer ${DEST.num}`;
   else if (state.event) hint = '';
   else if (Math.abs(rel) > 2.2) hint = 'Keer om';
   else if (!road) hint = 'Terug naar de weg';
@@ -4000,11 +4285,17 @@ function step(dt, now) {
   if (state.mode === 'drive' || state.mode === 'roam') {
     drivePhysics(dt, now);
     COPS.update(dt, now);
-    if (state.mode === 'drive') { state.time += dt; if (GAME.job) GAME.job.t += dt; }
+    if (state.mode === 'drive') {
+      state.time += dt;
+      const j = GAME.job;
+      if (j && j.stage !== 'ophalen') j.t += dt; // de fooi loopt pas weg als de lading erin zit
+      if (j?.warm !== undefined && j.stage === 'bezorgen' && !j.cold && (j.warm -= dt) <= 0) { j.cold = true; j.dmg = Math.max(j.dmg, 0.6); showToast('De melk is afgekoeld', 'de kaasboerin betaalt minder', 2000); }
+    }
+    TOEN.update(dt, now);
     updateNav(dt);
     // bij het adres stilgestaan? Met de politie achter je kun je niet bezorgen.
     if (state.mode === 'drive' && GAME.job && !state.event && Math.hypot(DEST.gate[0] - state.x, DEST.gate[1] - state.z) < 6 && Math.abs(state.v) < 3.2) {
-      if (!COPS.wanted) deliver();
+      if (!COPS.wanted) arrive();
       else if (now > GAME.warnT) { GAME.warnT = now + 3000; showToast('Eerst de politie kwijt!', 'met zwaailicht achter je kun je niet bezorgen', 1800); }
     }
     if (state.mode === 'drive' && state.time >= SHIFT) endShift();
@@ -4058,8 +4349,10 @@ function frame(now) {
       setText('timer', fmtClock(left)); setText('score', fmtPts(GAME.score));
       if (GAME.job) {
         const j = GAME.job, it = j.item; setText('navPay', '+' + reward(j));
-        const line = it.au ? `${it.kort} · ${Math.round((1 - j.dmg) * 100)}% ${it.heel}` : it.kort;
-        if (shown.get('navItem') !== line) { shown.set('navItem', line); const b = $('navItem'); b.textContent = it.kort; if (it.au) { const i = document.createElement('i'); i.textContent = ` · ${Math.round((1 - j.dmg) * 100)}% ${it.heel}`; b.append(i); } }
+        const ophalen = j.stage === 'ophalen', tail = ophalen ? '' : it.au ? ` · ${Math.round((1 - j.dmg) * 100)}% ${it.heel}` : '';
+        const head = ophalen ? `Ophalen · ${j.story.jaar}` : it.kort, line = head + tail;
+        if (shown.get('navItem') !== line) { shown.set('navItem', line); const b = $('navItem'); b.textContent = head; if (tail) { const i = document.createElement('i'); i.textContent = tail; b.append(i); } }
+        if (j.warm !== undefined && j.stage === 'bezorgen') setText('navRule', j.cold ? 'de melk is afgekoeld' : `nog ${fmtClock(Math.max(0, j.warm))} warm`);
       }
       $('shiftBox').classList.toggle('low', left < 15);
       if (left < 10 && Math.ceil(left) !== GAME.tick) { GAME.tick = Math.ceil(left); beep([880], 0.07, 'square', 0.1); } // laatste tien tellen
@@ -4082,10 +4375,11 @@ function showStartCard() {
   $('routeKm').textContent = n ? fmtKm(n.m) : '';
   $('bestLine').textContent = GAME.best ? `Beste dienst met ${VEH.it}` : `Nog geen dienst gereden met ${VEH.it}`;
   $('bestPts').textContent = GAME.best ? fmtPts(GAME.best) : '';
+  $('weetjesN').textContent = `${TOEN.found}/${TOEN.total}`;
 }
 function chooseVehicle(id) {
   setVehicle(id); if (PHYS.ok) PHYS.setVehicle();
-  $('introText').textContent = `Je ${VEH.desc} staat voor Soemeersingel 25. Bezorg in vijf minuten zoveel mogelijk adressen in Helenaveen: elk adres levert punten op, en hoe sneller je er bent, hoe meer fooi.`;
+  $('introText').textContent = `Je ${VEH.desc} staat voor Soemeersingel 25. Bezorg in vijf minuten zoveel mogelijk adressen in Helenaveen: elk adres levert punten op, en hoe sneller je er bent, hoe meer fooi. Om de paar adressen wacht een verhaal uit het Helenaveen van toen, en langs de weg staan bordjes met weetjes.`;
   $('kGas').textContent = VEH.gasText; $('kTurbo').textContent = VEH.turboText; $('kSteer').textContent = VEH.steerText;
   document.querySelectorAll('#pick button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.v === VEH.id)));
   try { localStorage.setItem('ape-koolweg-wagen', VEH.id); } catch (e) { /* geen opslag */ }
@@ -4097,7 +4391,7 @@ document.querySelectorAll('#pick button').forEach((b) => b.addEventListener('cli
 function startShift(atStart) {
   if (atStart) Object.assign(state, { x: W.start.x, z: W.start.z, h: W.start.h, v: 0, steer: 0, roll: 0, tip: 0, tiltTime: 0, event: null, sinkY: 0, y: 0, lastSafe: null, susY: 0, susV: 0, pitch: 0, pitchV: 0 });
   if (PHYS.ok) PHYS.teleport(state.x, state.z, state.h);
-  Object.assign(GAME, { score: 0, delivered: 0, fines: 0, tick: -1, job: null });
+  Object.assign(GAME, { score: 0, delivered: 0, fines: 0, tick: -1, job: null, stories: [], storyDone: 0 });
   const n = GAME.next || { ...pickJob(state.x, state.z, true), item: pickItem() }; GAME.next = null;
   startJob(n.a, n.item);
   state.time = 0; state.mode = 'drive'; camInit = false; last = performance.now(); navTimer = 0;
@@ -4111,7 +4405,7 @@ function endShift() {
   if (GAME.score > 0 && (!GAME.best || GAME.score > GAME.best)) { GAME.best = GAME.score; isBest = true; try { localStorage.setItem('ape-punten-best-' + VEH.id, String(GAME.score)); } catch (e) { /* geen opslag */ } }
   const n = GAME.delivered, f = GAME.fines;
   $('endScore').textContent = `${fmtPts(GAME.score)} ${GAME.score === 1 ? 'punt' : 'punten'}`;
-  $('endText').textContent = `${VEH.endText} Je bezorgde ${n === 0 ? 'geen enkel adres' : n === 1 ? 'één adres' : `${n} adressen`} met ${VEH.it}${f ? ` en kreeg ${f === 1 ? 'één bekeuring' : `${f} bekeuringen`}` : ', zonder bekeuring'}.`;
+  $('endText').textContent = `${VEH.endText} Je bezorgde ${n === 0 ? 'geen enkel adres' : n === 1 ? 'één adres' : `${n} adressen`} met ${VEH.it}${GAME.storyDone ? `, waarvan ${GAME.storyDone === 1 ? 'één verhaal' : `${GAME.storyDone} verhalen`} van toen,` : ''}${f ? ` en kreeg ${f === 1 ? 'één bekeuring' : `${f} bekeuringen`}` : ' zonder bekeuring'}.`;
   $('bestText').textContent = isBest ? `Nieuwe beste dienst met ${VEH.it} op dit apparaat.` : GAME.best ? `Beste dienst met ${VEH.it} op dit apparaat: ${fmtPts(GAME.best)} punten.` : '';
   $('endScreen').hidden = false; $('againBtn').focus();
 }
@@ -4157,7 +4451,7 @@ const boot = (data) => {
   requestAnimationFrame(frame);
 };
 window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
-window.__ape = { state, keys, routeFrom, DEST, camera, THREE, scene, renderer, resize, sun, CARGO, LADING, cargoShock, reward, bumpHeight, BUMPS, BUILD_SHAPES, TREES, pip, inWater, LIFE, COPS, TRAFFIC, PHYS, GAME, ADDRS, NODES, startShift, endShift, deliver, pickJob, startJob, get aerialLoaded() { return aerialLoaded; }, get post() { return post; }, get VEH() { return VEH; }, get frames() { return renderer.info.render.frame; },
+window.__ape = { state, keys, routeFrom, DEST, camera, THREE, scene, renderer, resize, sun, CARGO, LADING, cargoShock, reward, TOEN, VERHALEN, pickStory, startStoryJob, arrive, bumpHeight, BUMPS, BUILD_SHAPES, TREES, pip, inWater, LIFE, COPS, TRAFFIC, PHYS, GAME, ADDRS, NODES, startShift, endShift, deliver, pickJob, startJob, get aerialLoaded() { return aerialLoaded; }, get post() { return post; }, get VEH() { return VEH; }, get frames() { return renderer.info.render.frame; },
   sim(seconds, dt = 1 / 60) { let maxSus = 0, thumps = 0, events = []; const t0 = state.lastThump;
     for (let t = 0; t < seconds; t += dt) { drivePhysics(dt); if (state.event && !events.includes(state.event)) events.push(state.event); updateNav(dt); maxSus = Math.max(maxSus, Math.abs(state.susY)); if (state.lastThump !== t0) thumps++; }
     return { x: +state.x.toFixed(1), z: +state.z.toFixed(1), v: +(state.v * 3.6).toFixed(1), maxSus: +maxSus.toFixed(3), events, street: streetShown }; },

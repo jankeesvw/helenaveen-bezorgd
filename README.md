@@ -17,7 +17,15 @@ Op de startkaart kies je je wagen; de beste dienst wordt per wagen bijgehouden.
 
 Een dienst duurt vijf minuten. Je krijgt steeds een willekeurig adres in het dorp, een van de bijna vierhonderd echte adressen uit de BAG; het paaltje met het huisnummer staat aan de stoep en een lichtbaken wijst het van ver aan. Sta je er stil, dan is het bezorgd en krijg je meteen het volgende adres. Elk adres levert punten op naar de afstand, plus fooi die wegloopt naarmate je er langer over doet.
 
-Elk adres krijgt een eigen lading, die in de laadbak van de Ape staat of op een imperiaal op het dak van de andere wagens. Een pakketje of champignons van de kwekerij zijn gewoon; pizza's leveren meer fooi op maar die loopt snel weg; eieren en een verjaardagstaart breken op bulten en bij klappen; uit een aquarium met een goudvis klotst het water als je hard remt of scherp stuurt; melkbussen zijn zwaar, zodat je minder snel optrekt, maar leveren meer op. Wat er kapot is gaat van de punten af.
+Elk adres krijgt een eigen lading, die in de laadbak van de Ape staat of op een imperiaal op het dak van de andere wagens. Een pakketje of kool van de Koolweg zijn gewoon; pizza's leveren meer fooi op maar die loopt snel weg; eieren en een verjaardagstaart breken op bulten en bij klappen; uit een aquarium met een goudvis klotst het water als je hard remt of scherp stuurt; melkbussen zijn zwaar, zodat je minder snel optrekt, maar leveren meer op. Wat er kapot is gaat van de punten af.
+
+## Helenaveen van toen
+
+Na elke twee gewone adressen wacht een verhaal uit de geschiedenis van het dorp: eerst iets ophalen, dan wegbrengen. Eierkisten van een kippenhouder aan de Koolweg naar de eierwagen op de Sevenumseweg; warme melk voor de kaasboerin op een Koningshoeve, voordat hij afkoelt; de Gouden Helm die turfsteker Gebbel Smolenaars in 1910 vond; twee botanici die in 1895 door de kermis geen bed hadden en naar Meijel moesten; bijenkasten voor meester Theelen, waar bij een klap de bijen uit ontsnappen; en balen turfstrooisel van de eerste turfstrooiselfabriek van Nederland.
+
+Langs de weg staan bruine bordjes met een gouden munt erboven. Rijd je erlangs, dan krijg je een weetje over het oude Helenaveen (de kazemat bij Soemeersingel 25, de kool onder glas aan de Koolweg, de scheepswerf, de sage van het Soemeer en meer) en tijdens een dienst 25 punten. Welke je al hebt gevonden, onthoudt je browser.
+
+De verhalen en weetjes komen van [Helenaveen van toen](https://www.helenaveenvantoen.nl), [DeurneWiki](https://www.deurnewiki.nl) en de [straatnaamverklaring van André Vervuurt](https://www.andre-vervuurt.nl/09_Straatnaamverklaring_AV.pdf).
 
 ## Politie
 
