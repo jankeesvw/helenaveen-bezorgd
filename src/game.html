@@ -266,18 +266,29 @@ body.is-touch .tilt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+  "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+  "n8ao": "https://cdn.jsdelivr.net/npm/n8ao@2.0.1/dist/N8AO.js",
+  "postprocessing": "./postprocessing-stub.js"
 } }
 </script>
 <script>window.WORLD = /*__WORLD__*/null;</script>
 <script type="module">
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 
 const W = window.WORLD;
 const $ = (id) => document.getElementById(id);
 // telefoon of tablet: aanraakbediening en een lichtere grafische stand
 const MOBILE = matchMedia('(pointer: coarse)').matches || location.hash === '#touch';
+// ambient occlusion (alleen op de computer); alvast laden terwijl de wereld wordt opgebouwd
+const POST = !MOBILE && !/plat/.test(location.hash);
+const n8aoLoad = POST ? import('n8ao').then((m) => m.N8AOPass).catch(() => null) : null;
 
 // ------------------------------------------------------------------ data
 const D = (v) => v / 10;
@@ -424,12 +435,24 @@ const camera = new THREE.PerspectiveCamera(62, 1, 0.1, MOBILE ? 650 : 1100);
 const sunDir = new THREE.Vector3(-0.55, 0.42, 0.72).normalize();
 const skyMat = new THREE.ShaderMaterial({
   side: THREE.BackSide, depthWrite: false, fog: false,
-  uniforms: { top: { value: SKY_TOP }, horizon: { value: SKY_HORIZON }, sun: { value: sunDir } },
+  uniforms: { top: { value: SKY_TOP }, horizon: { value: SKY_HORIZON }, sun: { value: sunDir }, post: { value: 0 } },
   vertexShader: 'varying vec3 vDir; void main(){ vDir = normalize(position); vec4 p = modelViewMatrix*vec4(position,1.); gl_Position = projectionMatrix*p; gl_Position.z = gl_Position.w; }',
-  fragmentShader: `uniform vec3 top; uniform vec3 horizon; uniform vec3 sun; varying vec3 vDir;
+  // De lucht wordt zonder tone mapping getekend. Gaat het beeld door de nabewerking (die ACES en sRGB toepast), dan
+  // draait undoTone die stap vooraf terug, zodat de lucht er precies zo uitziet; feller dan wit (de zon) blijft fel voor de gloed.
+  fragmentShader: `uniform vec3 top; uniform vec3 horizon; uniform vec3 sun; uniform float post; varying vec3 vDir;
+    const mat3 ACESIn = mat3(vec3(0.59719, 0.07600, 0.02840), vec3(0.35458, 0.90834, 0.13383), vec3(0.04823, 0.01566, 0.83777));
+    const mat3 ACESOut = mat3(vec3(1.60475, -0.10208, -0.00327), vec3(-0.53108, 1.10813, -0.07276), vec3(-0.07367, -0.00605, 1.07602));
+    vec3 undoTone(vec3 c) {
+      vec3 y = clamp(inverse(ACESOut) * mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c)), 0.0, 0.985);
+      vec3 a = 0.983729 * y - 1.0, b = 0.432951 * y - 0.0245786, k = 0.238081 * y + 0.000090537;
+      vec3 v = (-b - sqrt(b * b - 4.0 * a * k)) / (2.0 * a);
+      return max(inverse(ACESIn) * v, 0.0) * 0.6 / 1.05;
+    }
     void main(){ float h = clamp(vDir.y, 0., 1.); vec3 c = mix(horizon, top, pow(h, .55));
       float s = max(dot(normalize(vDir), sun), 0.); c += vec3(1., .86, .6) * (pow(s, 600.) * 2.2 + pow(s, 12.) * .25);
-      if (vDir.y < 0.) c = horizon * .95; gl_FragColor = vec4(c, 1.); }`,
+      if (vDir.y < 0.) c = horizon * .95;
+      if (post > 0.5) c = undoTone(min(c, vec3(0.97))) + max(c - 0.97, 0.0) * 3.0;
+      gl_FragColor = vec4(c, 1.); }`,
 });
 const sky = new THREE.Mesh(new THREE.SphereGeometry(1000, 32, 16), skyMat);
 scene.add(sky);
@@ -449,8 +472,10 @@ const hemi = new THREE.HemisphereLight('#dfeaf4', '#5b6b3a', 0.5);
 scene.add(hemi);
 const sun = new THREE.DirectionalLight('#fff1d6', 2.4);
 sun.castShadow = true;
-sun.shadow.mapSize.set(MOBILE ? 1024 : 2048, MOBILE ? 1024 : 2048);
-sun.shadow.camera.left = -70; sun.shadow.camera.right = 70; sun.shadow.camera.top = 70; sun.shadow.camera.bottom = -70;
+// op de computer een groter schaduwgebied dat vooruit in beeld ligt, zodat ook de huizen verderop schaduw werpen
+const SHADOW = MOBILE ? { size: 1024, w: 70, h: 70, ahead: 0 } : { size: 4096, w: 130, h: 90, ahead: 60 };
+sun.shadow.mapSize.set(SHADOW.size, SHADOW.size);
+sun.shadow.camera.left = -SHADOW.w; sun.shadow.camera.right = SHADOW.w; sun.shadow.camera.top = SHADOW.h; sun.shadow.camera.bottom = -SHADOW.h;
 sun.shadow.camera.near = 10; sun.shadow.camera.far = 400;
 sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.04;
 scene.add(sun, sun.target);
@@ -2105,7 +2130,7 @@ const COPS = (() => {
     c.wr += c.v * dt / M.wr; for (const w of c.wheels) w.rotation.x = -c.wr;
     // zwaailicht: links twee flitsen, dan rechts twee
     const on = c.mode === 'chase' || c.hold, ph = Math.floor(now / 90) % 8;
-    c.lamps.forEach((l, i) => { const lit = on && (i ? ph === 4 || ph === 6 : ph === 0 || ph === 2); l.mat.emissiveIntensity = lit ? 3 : 0.15; l.glow.visible = lit; });
+    c.lamps.forEach((l, i) => { const lit = on && (i ? ph === 4 || ph === 6 : ph === 0 || ph === 2); l.mat.emissiveIntensity = lit ? 7 : 0.15; l.glow.visible = lit; });
   }
 
   // ---- de achtervolging: A* over het wegennet naar jou (of naar waar ze je het laatst zagen)
@@ -2836,7 +2861,7 @@ const TRAFFIC = (() => {
       if (-rel > 2.2) {
         bonk(); a.hitT = 2.5;
         if (now > a.honkT) { a.honkT = now + 5000; const d = Math.hypot(x - state.x, z - state.z); if (a.kind === 'bike') bell(d); else carHorn(d, a.kind === 'tractor' ? 0.75 : 1); }
-        stats.hits++;
+        stats.hits++; if (stats.log.length < 12) stats.log.push({ t: a.type, you: +(state.v * 3.6).toFixed(0), it: +(a.v * 3.6).toFixed(0), dh: +wrap(a.h - state.h).toFixed(2), x: Math.round(state.x), z: Math.round(state.z), ahead: Math.round(((x - state.x) * -Math.sin(state.h) + (z - state.z) * -Math.cos(state.h)) * 10) / 10 });
         // reed jij erop in, en ziet de politie het?
         if (vpx * nx + vpz * nz < -4 && (state.mode === 'drive' || state.mode === 'roam')) {
           COPS.report(now, a.kind === 'bike' ? 'je reed een fietser aan' : a.kind === 'tractor' ? 'je ramde een trekker' : 'je reed een auto aan');
@@ -2878,8 +2903,8 @@ const TRAFFIC = (() => {
   }
   function setLamps(a, mesh, m, brake, ind, now) {
     const g = mesh.geometry.attributes.glow, t = m.tags, arr = g.array, blink = Math.floor(now / 360) % 2 === 0;
-    const beam = 0.25 + 2.4 * Math.pow(Math.max(0, Math.sin(now / 130)), 6);
-    for (let i = m.lamp0; i < t.length; i++) { const k = t[i]; arr[i] = k === 2 ? 0.45 : k === 3 ? (brake ? 2.6 : 0.3) : k === 4 ? (ind < 0 && blink ? 2.4 : 0) : k === 5 ? (ind > 0 && blink ? 2.4 : 0) : k === 6 ? beam : 0; }
+    const beam = 0.25 + 4 * Math.pow(Math.max(0, Math.sin(now / 130)), 6);
+    for (let i = m.lamp0; i < t.length; i++) { const k = t[i]; arr[i] = k === 2 ? 0.45 : k === 3 ? (brake ? 3.6 : 0.3) : k === 4 ? (ind < 0 && blink ? 2.4 : 0) : k === 5 ? (ind > 0 && blink ? 2.4 : 0) : k === 6 ? beam : 0; }
     if (g.addUpdateRange) { g.clearUpdateRanges?.(); g.addUpdateRange(m.lamp0, t.length - m.lamp0); }
     g.needsUpdate = true;
   }
@@ -2916,7 +2941,7 @@ const TRAFFIC = (() => {
   }
 
   // ---- de lus
-  const stats = { spawned: 0, oncoming: 0, passedYou: 0, hits: 0, ghosts: 0 };
+  const stats = { spawned: 0, oncoming: 0, passedYou: 0, hits: 0, ghosts: 0, log: [] };
   let tick = 0, ready = false;
   function think(now) {
     gather();
@@ -3457,18 +3482,57 @@ function updateCamera(dt, instant) {
   const fov = 60 + Math.abs(state.v) * 0.45; if (Math.abs(camera.fov - fov) > 0.05) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); }
 }
 
+// ------------------------------------------------------------------ nabewerking
+// Op de computer gaat het beeld door een EffectComposer: N8AO tekent de scène en legt zachte schaduw in hoeken en
+// kieren (onder de wagens, langs de gevels, tussen de dakkapellen), daarna een lichte gloed op wat feller is dan wit
+// (de zon, glinsteringen op het water, zwaailichten), tone mapping en SMAA tegen kartelrandjes.
+// Telefoons tekenen rechtstreeks met MSAA, dat is veel lichter.
+const tvSun = new THREE.Vector3(), shadowAt = new THREE.Vector3();
+const SUN_X = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), sunDir).normalize(), SUN_Y = new THREE.Vector3().crossVectors(sunDir, SUN_X);
+const SUN_TX = (2 * SHADOW.w) / SHADOW.size, SUN_TY = (2 * SHADOW.h) / SHADOW.size;
+let post = null;
+if (POST) {
+  const N8AOPass = await n8aoLoad;
+  const pr = renderer.getPixelRatio(), target = new THREE.WebGLRenderTarget(innerWidth * pr, innerHeight * pr, { type: THREE.HalfFloatType, stencilBuffer: true });
+  const composer = new EffectComposer(renderer, target);
+  const plain = new RenderPass(scene, camera); composer.addPass(plain);
+  let ao = null;
+  if (N8AOPass) {
+    ao = new N8AOPass(scene, camera, innerWidth, innerHeight);
+    // stencil voor het watermasker; transparantie overslaan scheelt twee extra keer de scène tekenen
+    Object.assign(ao.configuration, { stencil: true, transparencyAware: false, gammaCorrection: false, aoRadius: 2.6, distanceFalloff: 1.0, intensity: 3, aoSamples: 16, denoiseSamples: 8, denoiseRadius: 12 });
+    composer.addPass(ao); plain.enabled = false;
+  }
+  const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.32, 0.55, 1.05);
+  composer.addPass(bloom);
+  composer.addPass(new OutputPass());
+  composer.addPass(new SMAAPass(innerWidth * pr, innerHeight * pr));
+  post = { composer, ao, plain, bloom };
+  skyMat.uniforms.post.value = 1;
+}
+// minder nabewerking als de beeldsnelheid zakt: eerst de AO op halve resolutie, dan zonder AO, dan helemaal zonder
+function lowerPost(level) {
+  if (!post) return;
+  if (level === 1 && post.ao) post.ao.configuration.halfRes = true;
+  if (level === 2 && post.ao) { post.ao.enabled = false; post.plain.enabled = true; }
+  if (level >= 3) { post = null; skyMat.uniforms.post.value = 0; }
+}
+
 // ------------------------------------------------------------------ hoofdlus
 let last = performance.now();
 // kwaliteit: zakt de beeldsnelheid, dan eerst minder pixels en daarna zachtere schaduwen uit
 let pixelRatio = Math.min(window.devicePixelRatio, MOBILE ? 1.5 : 2), perfAcc = 0, perfN = 0, perfLevel = 0, frameNo = 0;
 function adaptQuality(dt) {
+  if (window.__ape?.fixedQuality) return; // voor tests in een trage headless browser
   perfAcc += dt; perfN++;
   if (perfAcc < 2) return;
   const avg = perfAcc / perfN; perfAcc = 0; perfN = 0;
   if (avg > 0.026 && perfLevel < 3) {
     perfLevel++;
     if (pixelRatio > 1) pixelRatio = Math.max(1, pixelRatio - 0.5); else if (perfLevel >= 2) pixelRatio = 0.8;
+    if (perfLevel === 2 && SHADOW.size > 2048) { sun.shadow.mapSize.set(2048, 2048); sun.shadow.map?.dispose(); sun.shadow.map = null; }
     if (perfLevel >= 3) { sun.shadow.mapSize.set(1024, 1024); sun.shadow.map?.dispose(); sun.shadow.map = null; scene.fog.far = 520; camera.far = 700; }
+    lowerPost(perfLevel);
     renderer.setPixelRatio(pixelRatio); resize();
   }
 }
@@ -3513,8 +3577,12 @@ function frame(now) {
     camera.position.set(state.x + Math.sin(t) * o + fx * mid, 1.6 + o * 0.12, state.z + Math.cos(t) * o + fz * mid); camera.lookAt(state.x + fx * mid, 0.9, state.z + fz * mid);
   } else updateCamera(dt);
   LIFE.update(dt, now);
-  // zon en schaduw volgen de Ape
-  sun.position.set(state.x + sunDir.x * 200, sunDir.y * 200, state.z + sunDir.z * 200); sun.target.position.set(state.x, 0, state.z);
+  // zon en schaduw volgen de Ape (op de computer een stuk vooruit in de kijkrichting), op hele texels zodat de randen niet kruipen
+  camera.getWorldDirection(tvSun); const fl = Math.hypot(tvSun.x, tvSun.z) || 1;
+  shadowAt.set(state.x + (tvSun.x / fl) * SHADOW.ahead, 0, state.z + (tvSun.z / fl) * SHADOW.ahead);
+  const u = Math.round(shadowAt.dot(SUN_X) / SUN_TX) * SUN_TX, v = Math.round(shadowAt.dot(SUN_Y) / SUN_TY) * SUN_TY, w = shadowAt.dot(sunDir);
+  shadowAt.copy(SUN_X).multiplyScalar(u).addScaledVector(SUN_Y, v).addScaledVector(sunDir, w);
+  sun.target.position.copy(shadowAt); sun.position.copy(shadowAt).addScaledVector(sunDir, 200);
   sky.position.copy(camera.position); clouds.position.set(camera.position.x, 0, camera.position.z);
   waterNormal.offset.set(now * 0.000012, now * 0.000007);
   const { beam, ring } = destGroup.userData; beam.material.opacity = 0.16 + Math.sin(now / 400) * 0.05; ring.scale.setScalar(1 + Math.sin(now / 300) * 0.06);
@@ -3531,7 +3599,7 @@ function frame(now) {
     setText('limitNum', String(state.limit)); $('limit').classList.toggle('over', Math.abs(state.v) * 3.6 > state.limit + 5);
     updateAudio(state.rpm, state.throttle || 0, true);
   }
-  renderer.render(scene, camera);
+  if (post) post.composer.render(dt); else renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
 
@@ -3582,6 +3650,7 @@ function prepareNext() { GAME.job = null; GAME.next = pickJob(W.start.x, W.start
 
 function resize() {
   const w = window.innerWidth, h = window.innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  if (post) { post.composer.setPixelRatio(renderer.getPixelRatio()); post.composer.setSize(w, h); }
 }
 addEventListener('resize', resize); resize();
 
@@ -3619,7 +3688,7 @@ const boot = (data) => {
   requestAnimationFrame(frame);
 };
 window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
-window.__ape = { state, keys, routeFrom, DEST, camera, THREE, scene, bumpHeight, BUMPS, LIFE, COPS, TRAFFIC, GAME, ADDRS, NODES, startShift, endShift, deliver, pickJob, startJob, get aerialLoaded() { return aerialLoaded; }, get frames() { return renderer.info.render.frame; },
+window.__ape = { state, keys, routeFrom, DEST, camera, THREE, scene, bumpHeight, BUMPS, LIFE, COPS, TRAFFIC, GAME, ADDRS, NODES, startShift, endShift, deliver, pickJob, startJob, get aerialLoaded() { return aerialLoaded; }, get post() { return post; }, get frames() { return renderer.info.render.frame; },
   sim(seconds, dt = 1 / 60) { let maxSus = 0, thumps = 0, events = []; const t0 = state.lastThump;
     for (let t = 0; t < seconds; t += dt) { if (state.event) { updateEvent(dt); if (!events.includes(state.event)) events.push(state.event); } else physics(dt); updateNav(dt); maxSus = Math.max(maxSus, Math.abs(state.susY)); if (state.lastThump !== t0) thumps++; }
     return { x: +state.x.toFixed(1), z: +state.z.toFixed(1), v: +(state.v * 3.6).toFixed(1), maxSus: +maxSus.toFixed(3), events, street: streetShown }; },
