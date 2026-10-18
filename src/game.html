@@ -269,7 +269,8 @@ body.is-touch .tilt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
   "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
   "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
   "n8ao": "https://cdn.jsdelivr.net/npm/n8ao@2.0.1/dist/N8AO.js",
-  "postprocessing": "./postprocessing-stub.js"
+  "postprocessing": "./postprocessing-stub.js",
+  "@dimforge/rapier3d-compat": "https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.19.3/rapier.mjs"
 } }
 </script>
 <script>window.WORLD = /*__WORLD__*/null;</script>
@@ -289,6 +290,8 @@ const MOBILE = matchMedia('(pointer: coarse)').matches || location.hash === '#to
 // ambient occlusion (alleen op de computer); alvast laden terwijl de wereld wordt opgebouwd
 const POST = !MOBILE && !/plat/.test(location.hash);
 const n8aoLoad = POST ? import('n8ao').then((m) => m.N8AOPass).catch(() => null) : null;
+// physics (Rapier, als WebAssembly); #simpel rijdt met de oude eenvoudige besturing
+const rapierLoad = /simpel/.test(location.hash) ? null : import('@dimforge/rapier3d-compat').then(async (m) => { const R = m.default ?? m; await R.init(); return R; }).catch((e) => { console.warn('Rapier niet geladen', e); return null; });
 
 // ------------------------------------------------------------------ data
 const D = (v) => v / 10;
@@ -1129,7 +1132,7 @@ const tipper = new THREE.Group();
 const shell = new THREE.Group();
 ape.add(tipper); tipper.add(shell);
 scene.add(ape);
-let wheels = [], steerParts = [], driver = new THREE.Group(), cockpit = new THREE.Group();
+let wheels = [], wheelMounts = [], steerParts = [], driver = new THREE.Group(), cockpit = new THREE.Group();
 
 const MAT = {
   black: new THREE.MeshStandardMaterial({ color: '#1b1d1f', roughness: 0.7 }),
@@ -1434,24 +1437,28 @@ const VEHICLES = {
   ape: { id: 'ape', name: 'Ape', it: 'de Ape', title: 'Met de <em>Ape</em> door Helenaveen', desc: 'groene Piaggio Ape', build: buildApe,
     wb: 1.7, track: 1.12, wheelR: 0.245, front: 0.25, rear: 0.66, half: 0.66, three: true, rev: 22,
     vmax: 45, vturbo: 70, acc: 2.6, accT: 3.4, tip: { a0: 5.0, a1: 0.25, lift: 6.3, tip: 7.0 }, lean: 0.055,
+    phys: { mass: 420, cg: [0.5, -0.6], h: 1.7, clear: 0.3, k: 34, dc: 3.4, dr: 4.0, rest: 0.2, travel: 0.18, mu: 1.2, roll: 0.65 },
     gears: [16, 31, 45], dial: 80, eye: [0, 1.44, -1.0], chase: [5.4, 2.1], orbit: 7, sound: { base: 38, span: 120, lp: 500, type: 'sawtooth' }, horn: [[415, 520], 'square'],
     turboLabel: 'OPGEVOERD', gasText: 'gas geven (de Ape haalt 45 km/u)', turboText: 'opgevoerd: tot 70 km/u', steerText: 'sturen; scherp sturen op snelheid kantelt hem',
     tipText: 'een Ape neem je niet op vol stuur', endText: 'De laadbak is leeg.' },
   fiat: { id: 'fiat', name: 'Fiat 500', it: 'de Fiat', title: 'Met de <em>Fiat 500</em> door Helenaveen', desc: 'rode Fiat 500', build: buildFiat,
     wb: 1.84, track: 1.12, wheelR: 0.27, tyreW: 0.13, front: 0.56, rear: 0.57, half: 0.67, rev: 32,
     vmax: 85, vturbo: 95, acc: 2.3, accT: 2.7, grip: 7.8, lean: 0.04,
+    phys: { mass: 560, cg: [0.46, -0.75], h: 1.32, clear: 0.24, k: 34, dc: 3.4, dr: 4.0, rest: 0.18, travel: 0.16, mu: 1.05, roll: 0.5 },
     gears: [25, 45, 65, 95], dial: 120, eye: [-0.3, 1.13, -1.28], chase: [5.8, 2.0], orbit: 7, sound: { base: 30, span: 88, lp: 420, type: 'square' }, horn: [[520, 620], 'square'],
     turboLabel: 'PLANKGAS', gasText: 'gas geven (de Fiat haalt 85 km/u)', turboText: 'plankgas: tot 95 km/u', steerText: 'sturen',
     endText: 'Het linnen dak mag open.' },
   kever: { id: 'kever', name: 'Kever', it: 'de Kever', title: 'Met de <em>Kever</em> door Helenaveen', desc: 'rode Volkswagen Kever', build: buildKever,
     wb: 2.4, track: 1.32, wheelR: 0.31, tyreW: 0.16, front: 0.86, rear: 0.82, half: 0.8, rev: 35,
     vmax: 100, vturbo: 120, acc: 2.7, accT: 3.2, grip: 8.2, lean: 0.05,
+    phys: { mass: 820, cg: [0.52, -1.0], h: 1.5, clear: 0.26, k: 30, dc: 3.4, dr: 4.0, rest: 0.2, travel: 0.18, mu: 1.12, roll: 0.5 },
     gears: [30, 55, 85, 120], dial: 140, eye: [-0.33, 1.24, -1.62], chase: [6.4, 2.2], orbit: 8, sound: { base: 24, span: 76, lp: 360, type: 'sawtooth' }, horn: [[440, 554], 'sawtooth'],
     turboLabel: 'PLANKGAS', gasText: 'gas geven (de Kever haalt 100 km/u)', turboText: 'plankgas: tot 120 km/u', steerText: 'sturen',
     endText: 'De boxermotor tikt nog even na.' },
   bus: { id: 'bus', name: 'VW-busje', it: 'het busje', title: 'Met het <em>VW-busje</em> door Helenaveen', desc: 'Samtgrüne Volkswagen T2', build: buildBus,
     wb: 2.4, track: 1.4, wheelR: 0.33, tyreW: 0.19, front: 0.75, rear: 1.36, half: 0.9, rev: 30,
     vmax: 95, vturbo: 110, acc: 2.0, accT: 2.4, tip: { a0: 6.0, a1: 0.12, lift: 7.4, tip: 8.4 }, lean: 0.08,
+    phys: { mass: 1250, cg: [0.8, -1.1], h: 1.95, clear: 0.3, k: 28, dc: 3.4, dr: 4.0, rest: 0.22, travel: 0.2, mu: 1.15, roll: 0.7 },
     gears: [25, 50, 75, 110], dial: 140, eye: [-0.42, 1.78, -2.45], chase: [7.4, 2.9], orbit: 9, sound: { base: 22, span: 70, lp: 340, type: 'sawtooth' }, horn: [[330, 415], 'sawtooth'],
     turboLabel: 'PLANKGAS', gasText: 'gas geven (het busje haalt 95 km/u)', turboText: 'plankgas: tot 110 km/u', steerText: 'sturen; een vol busje helt flink over in de bocht',
     tipText: 'een busje is hoog, neem de bocht rustiger', endText: 'Schuifdeur dicht, klaar voor vandaag.' },
@@ -1463,6 +1470,8 @@ function setVehicle(id) {
   for (const c of [...shell.children]) shell.remove(c);
   const parts = VEH.build(VEH);
   wheels = parts.wheels; steerParts = parts.steer; driver = parts.driver; cockpit = parts.cockpit;
+  // per wiel het deel dat met de vering op en neer gaat: de vork of het fusee als hij stuurt, anders het wiel zelf
+  wheelMounts = wheels.map((w) => { const o = w.parent === tipper ? w : w.parent; return { o, y: o.position.y }; });
   ape.traverse((o) => { if (o.isMesh && o.material !== MAT.glass) { o.castShadow = true; o.receiveShadow = true; } });
 }
 
@@ -2193,19 +2202,21 @@ const COPS = (() => {
       for (let i = 0; i < P.length; i += 2) for (let j = 0; j < Q.length; j += 2) { const dx = P[i] - Q[j], dz = P[i + 1] - Q[j + 1], d = Math.hypot(dx, dz) || 1e-3, gp = d - pr - M.R; if (gp < gap) { gap = gp; nx = dx / d; nz = dz / d; } }
       c.gap = gap; // ruimte tussen de carrosserieën
       if (c.mode === 'chase') minGap = Math.min(minGap, gap);
-      if (gap >= 0) continue;
-      const qx = state.x - nx * gap * 0.6, qz = state.z - nz * gap * 0.6;
-      if (!state.event && !blocked(qx, qz, state.h, roadAt(qx, qz, 0.3))) { state.x = qx; state.z = qz; c.x += nx * gap * 0.4; c.z += nz * gap * 0.4; }
-      else { c.x += nx * gap; c.z += nz * gap; }
-      // snelheden langs de botsnormaal uitwisselen (gelijke massa's, wat demping)
+      if (gap >= (PHYS.ok ? 0.15 : 0)) continue;
+      if (!PHYS.ok) {
+        const qx = state.x - nx * gap * 0.6, qz = state.z - nz * gap * 0.6;
+        if (!state.event && !blocked(qx, qz, state.h, roadAt(qx, qz, 0.3))) { state.x = qx; state.z = qz; c.x += nx * gap * 0.4; c.z += nz * gap * 0.4; }
+        else { c.x += nx * gap; c.z += nz * gap; }
+      }
+      // snelheden langs de botsnormaal uitwisselen (gelijke massa's, wat demping); met physics doet Rapier jouw kant
       const pfx = -Math.sin(state.h), pfz = -Math.cos(state.h), cfx = -Math.sin(c.h), cfz = -Math.cos(c.h);
-      const vpx = pfx * state.v, vpz = pfz * state.v, vcx = cfx * c.v, vcz = cfz * c.v;
+      const vpx = PHYS.ok ? state.pvx : pfx * state.v, vpz = PHYS.ok ? state.pvz : pfz * state.v, vcx = cfx * c.v, vcz = cfz * c.v;
       const rel = (vpx - vcx) * nx + (vpz - vcz) * nz;
       if (rel >= 0) continue;
       const j = -1.3 * rel / 2;
-      if (!state.event) state.v = (vpx + j * nx) * pfx + (vpz + j * nz) * pfz;
+      if (!state.event && !PHYS.ok) state.v = (vpx + j * nx) * pfx + (vpz + j * nz) * pfz;
       c.v = Math.max(0, (vcx - j * nx) * cfx + (vcz - j * nz) * cfz);
-      if (-rel > 2.5) bonk();
+      if (-rel > 2.5 && !PHYS.ok) bonk();
       // reed jij erop in? (jouw snelheid naar de wagen toe)
       if (vpx * nx + vpz * nz < -5 && now > ramCool) { ramCool = now + 3000; if (!wanted) startChase(c, now, 'je ramde een politiewagen'); else if (wanted < 3) raise(now, 'je ramde een politiewagen'); }
     }
@@ -2848,18 +2859,22 @@ const TRAFFIC = (() => {
       circ(x, z, h, circlesOf(m), Q);
       let gap = Infinity, nx = 0, nz = 0;
       for (let i = 0; i < P.length; i += 2) for (let j = 0; j < Q.length; j += 2) { const dx = P[i] - Q[j], dz = P[i + 1] - Q[j + 1], d = Math.hypot(dx, dz) || 1e-3, g = d - pr - m.hw; if (g < gap) { gap = g; nx = dx / d; nz = dz / d; } }
-      if (gap >= 0) return;
-      const mass = MASS[kind], share = mass / (mass + 1), qx = state.x - nx * gap * share, qz = state.z - nz * gap * share;
-      if (!state.event && !blocked(qx, qz, state.h, roadAt(qx, qz, 0.3))) { state.x = qx; state.z = qz; moveSelf(nx * gap * (1 - share), nz * gap * (1 - share)); }
-      else moveSelf(nx * gap, nz * gap);
+      if (gap >= (PHYS.ok ? 0.15 : 0)) return;
+      const mass = MASS[kind], share = mass / (mass + 1);
+      if (PHYS.ok) { if (gap < 0) moveSelf(nx * gap * 0.5, nz * gap * 0.5); } // Rapier houdt jou tegen, de ander schuift wat op
+      else {
+        const qx = state.x - nx * gap * share, qz = state.z - nz * gap * share;
+        if (!state.event && !blocked(qx, qz, state.h, roadAt(qx, qz, 0.3))) { state.x = qx; state.z = qz; moveSelf(nx * gap * (1 - share), nz * gap * (1 - share)); }
+        else moveSelf(nx * gap, nz * gap);
+      }
       const pfx = -Math.sin(state.h), pfz = -Math.cos(state.h), afx = -Math.sin(a.h), afz = -Math.cos(a.h);
-      const vpx = pfx * state.v, vpz = pfz * state.v, rel = (vpx - afx * a.v) * nx + (vpz - afz * a.v) * nz;
+      const vpx = PHYS.ok ? state.pvx : pfx * state.v, vpz = PHYS.ok ? state.pvz : pfz * state.v, rel = (vpx - afx * a.v) * nx + (vpz - afz * a.v) * nz;
       if (rel >= 0) return;
       const j = -1.3 * rel / (1 + 1 / mass);
-      if (!state.event) state.v = (vpx + j * nx) * pfx + (vpz + j * nz) * pfz;
+      if (!state.event && !PHYS.ok) state.v = (vpx + j * nx) * pfx + (vpz + j * nz) * pfz;
       a.v = Math.max(0, a.v - (j / mass) * Math.max(0, -(afx * nx + afz * nz)));
       if (-rel > 2.2) {
-        bonk(); a.hitT = 2.5;
+        if (!PHYS.ok) bonk(); a.hitT = 2.5;
         if (now > a.honkT) { a.honkT = now + 5000; const d = Math.hypot(x - state.x, z - state.z); if (a.kind === 'bike') bell(d); else carHorn(d, a.kind === 'tractor' ? 0.75 : 1); }
         stats.hits++; if (stats.log.length < 12) stats.log.push({ t: a.type, you: +(state.v * 3.6).toFixed(0), it: +(a.v * 3.6).toFixed(0), dh: +wrap(a.h - state.h).toFixed(2), x: Math.round(state.x), z: Math.round(state.z), ahead: Math.round(((x - state.x) * -Math.sin(state.h) + (z - state.z) * -Math.cos(state.h)) * 10) / 10 });
         // reed jij erop in, en ziet de politie het?
@@ -3278,6 +3293,7 @@ function respawn(msg) {
   const L = Math.hypot(dx, dz) || 1;
   state.x = sx + (-dz / L) * 1.2; state.z = sz + (dx / L) * 1.2; state.h = Math.atan2(-dx, -dz);
   state.v = 0; state.roll = 0; state.tip = 0; state.tiltTime = 0; state.event = null; state.sinkY = 0; state.steer = 0;
+  if (PHYS.ok) PHYS.teleport(state.x, state.z, state.h);
   if (msg) showToast(msg, '', 1200);
 }
 
@@ -3421,6 +3437,83 @@ function updateEvent(dt) {
   }
 }
 
+// rijden met echte physics: dezelfde knoppen en topsnelheden, maar vering, grip en botsingen komen nu uit Rapier
+let tipT = 0, lastBonk = 0;
+function physicsRapier(dt, now = performance.now()) {
+  const ev = state.event;
+  let gas = 0, brake = 0, steerIn = 0;
+  if (!ev) {
+    gas = keys.has('gas') ? 1 : 0; brake = keys.has('brake') ? 1 : 0;
+    steerIn = (keys.has('left') ? 1 : 0) - (keys.has('right') ? 1 : 0);
+    if (touchSteer !== null) steerIn = -touchSteer;
+    if (state.auto) ({ gas, brake, steerIn } = autopilot());
+  }
+  // ondergrond: op zand en gras minder snel en minder grip
+  const road = state.testRoad !== undefined ? state.testRoad : roadAt(state.x, state.z, 0.3), turbo = keys.has('turbo') && !ev; // testRoad: voor tests
+  let vmax = (turbo ? VEH.vturbo : VEH.vmax) / 3.6, drag = 0.04, roll = 0.18, grip = 1;
+  if (!road) { vmax *= 0.68; drag = 0.12; roll = 0.3; grip = 0.72; }
+  else if (road.r.u) { vmax *= 0.88; drag = 0.06; roll = 0.22; grip = 0.82; }
+  // motor: trekt minder naarmate je harder gaat; remmen, en blijf je erop staan dan achteruit
+  const v = state.v, MAX_REV = VEH.rev / 3.6;
+  let force = 0, brk = 0;
+  if (gas) { if (v < -0.3) brk = 6.5; else force = (turbo ? VEH.accT : VEH.acc) * Math.max(0, 1 - Math.pow(Math.max(0, v) / vmax, 2.2)); }
+  if (!gas && v > vmax + 0.3) brk = 1.5; // motorrem na het loslaten van Shift
+  if (brake) { if (v > 0.3) brk = 6.5; else force = -3.6 * (1 - Math.pow(Math.max(0, -v) / MAX_REV, 1.6)); }
+  if (!gas && !brake && Math.abs(v) < 0.4) brk = 4; // stilstaan blijft stilstaan
+  if (ev === 'busted') brk = 8;
+  // sturen: op snelheid minder uitslag; Ape en busje kun je zo ver sturen dat ze omgaan
+  const sp = Math.abs(v), T = VEH.tip, aLat = T ? T.a0 + T.a1 * sp : VEH.grip * 1.15;
+  const maxSteer = Math.min(0.6, Math.atan((VEH.wb * aLat) / Math.max(1, sp * sp)));
+  state.steer += (steerIn * maxSteer - state.steer) * Math.min(1, dt * (steerIn ? 5.5 : 7));
+  PHYS.drive(dt, { force, brake: brk, steer: state.steer, grip, drag, roll });
+  if (ev === 'splash') { const b = PHYS.body, lv = b.linvel(); b.setLinvel({ x: lv.x * 0.9, y: lv.y, z: lv.z * 0.9 }, true); }
+  // omgaan: een duwtje om de lengteas maakt de val af (anders balanceert hij soms op twee wielen terug)
+  if (ev === 'tip' && state.eventT < 1.2 && PHYS.up.y > 0.1) { const f = PHYS.fwd, k = -state.tipSide * VEH.phys.mass * 1.6 * dt; PHYS.body.applyTorqueImpulse({ x: f.x * k, y: f.y * k, z: f.z * k }, true); }
+  // klap tegen een muur, een boom of een andere wagen
+  const dv = Math.hypot(state.vx - state.pvx, state.vz - state.pvz);
+  if (dv > Math.max(2.4, 12 * dt) && now - lastBonk > 300) { lastBonk = now; bonk(); state.hits = (state.hits || 0) + 1; }
+  // kantelen: ligt hij op zijn kant, dan is het mis; staat er een wiel in de lucht, dan waarschuwen
+  const up = PHYS.up.y;
+  let lifted = false; const W = PHYS.wheels;
+  for (let i = 0; i < W.length; i++) { const w = PHYS.wheelInfo(i); W[i].vis = w.y; if (!w.contact) lifted = true; const rate = Math.abs(w.len - W[i].last) / Math.max(dt, 1e-3); W[i].last = w.len; if (rate > 0.9 && now - state.lastThump > 160) { thump(Math.min(1, rate / 3)); state.lastThump = now; } }
+  $('tilt').hidden = !(lifted && up < 0.985 && sp > 3 && !ev && state.mode === 'drive');
+  const side = PHYS.right.y; // positief: de rechterkant omhoog, hij helt naar links
+  if (!ev) {
+    tipT = up < 0.5 || (lifted && up < 0.88) ? tipT + dt : 0;
+    if (tipT > 0.5) { tipT = 0; startEvent('tip', side > 0 ? -1 : 1); state.tipSide = side > 0 ? 1 : -1; }
+    // in het water: de voorkant of het midden boven water en niet op een weg of brug
+    const midX = state.x - Math.sin(state.h) * VEH.wb * 0.45, midZ = state.z - Math.cos(state.h) * VEH.wb * 0.45;
+    if (!state.event && !roadAt(midX, midZ, 0.2) && inWater(midX, midZ) && state.y < 0.3) startEvent('splash');
+    if (road && road.r.d && !road.r.b && up > 0.95) state.lastSafe = { x: state.x, z: state.z, h: state.h };
+  }
+  // de rand van de kaart
+  if (state.x < BX0 + 22 || state.x > BX1 - 22 || state.z < BZ0 + 22 || state.z > BZ1 - 22) showToast('Hier houdt de kaart op', 'draai om, Helenaveen is de andere kant op', 1600);
+  // toerental en versnelling voor geluid en meter
+  const kmh = sp * 3.6, GEARS = VEH.gears;
+  let gear = 1; while (gear < GEARS.length && kmh > GEARS[gear - 1] - 2) gear++;
+  const lo = gear === 1 ? 0 : GEARS[gear - 2] - 6, hi = GEARS[gear - 1];
+  const rpm = Math.max(0.12, Math.min(1.5, (kmh - lo) / (hi - lo) * 0.85 + 0.2));
+  state.rpm += (rpm - state.rpm) * Math.min(1, dt * 8); state.gear = v < -0.1 ? 'R' : gear;
+  state.throttle = gas;
+  state.wheelRot += (v * dt) / 0.245;
+  state.roll = 0; state.tip = 0; state.susY = 0; state.pitch = 0; state.bumpRoll = 0;
+  if (ev) updateEventPhys(dt);
+}
+function updateEventPhys(dt) {
+  state.eventT += dt;
+  if (state.event === 'busted') { if (state.eventT > 3) { state.event = null; COPS.release(performance.now()); } return; }
+  if (state.event === 'splash') { state.sinkY = -Math.min(1.6, state.eventT * 1.5); $('tilt').hidden = true; }
+  if (state.eventT > 2.2) {
+    const s = state.lastSafe; if (s) { state.x = s.x; state.z = s.z; state.h = s.h; }
+    respawn('');
+  }
+}
+// één stap rijden, met of zonder physics
+function drivePhysics(dt, now) {
+  if (PHYS.ok) physicsRapier(dt, now);
+  else if (state.event) updateEvent(dt); else physics(dt);
+}
+
 // ------------------------------------------------------------------ straatnaam en navigatie
 let streetShown = '', navTimer = 0;
 function updateNav(dt) {
@@ -3456,12 +3549,18 @@ function updateNav(dt) {
 }
 
 // ------------------------------------------------------------------ camera
-const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
+const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), CAB_TILT = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -0.07);
 let camInit = false;
 function updateCamera(dt, instant) {
   const fx = -Math.sin(state.h), fz = -Math.cos(state.h);
   const y = state.y + state.sinkY;
   let desired, look;
+  if (state.cam === 1 && PHYS.ok) { // cabine, vast aan de wagen
+    camera.position.set(...VEH.eye).applyQuaternion(PHYS.quat).add(ape.position);
+    camera.quaternion.copy(PHYS.quat).multiply(CAB_TILT);
+    const fov = 60 + Math.abs(state.v) * 0.45; if (Math.abs(camera.fov - fov) > 0.05) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); }
+    camInit = false; return;
+  }
   if (state.cam === 1) { // cabine
     const [ex, ey, ez] = VEH.eye, rx = Math.cos(state.h), rz = -Math.sin(state.h);
     desired = new THREE.Vector3(state.x - fx * ez + rx * ex, y + ey + state.susY + state.pitch * -ez, state.z - fz * ez + rz * ex);
@@ -3481,6 +3580,175 @@ function updateCamera(dt, instant) {
   if (state.cam === 1) camera.rotateZ(state.roll + state.tip * 0.8);
   const fov = 60 + Math.abs(state.v) * 0.45; if (Math.abs(camera.fov - fov) > 0.05) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); }
 }
+
+// ------------------------------------------------------------------ physics: Rapier
+// Je wagen is een echt lichaam met massa, een zwaartepunt en vering per wiel (de raycast-vehicle van Rapier): hij helt
+// over in de bocht, duikt bij het remmen, stuitert over de wortelbulten en glijdt weg als je de grip kwijtraakt, op zand
+// eerder dan op asfalt. Huizen, bomen, brugleuningen en de rand van de kaart zijn vaste vormen; de politie en het
+// verkeer zijn bewegende blokken. Lukt het laden van Rapier niet, dan rijdt het spel met de eenvoudige besturing.
+const RAPIER = await rapierLoad;
+const PHYS = (() => {
+  if (!RAPIER) return { ok: false };
+  const R = RAPIER, world = new R.World({ x: 0, y: -9.81, z: 0 });
+  const G = { ground: 1, wall: 2, player: 4, npc: 8, bump: 16 };
+  const groups = (member, filter) => ((member & 0xffff) << 16) | (filter & 0xffff);
+  const RAY = groups(0xffff, G.ground | G.bump), GROUND_Y = 0.06;
+  const fixed = world.createRigidBody(R.RigidBodyDesc.fixed());
+  const solid = (desc, member) => world.createCollider(desc.setCollisionGroups(groups(member, G.player)).setFriction(0.7), fixed);
+  const yawQ = (h) => ({ x: 0, y: Math.sin(h / 2), z: 0, w: Math.cos(h / 2) });
+
+  // ---- de vaste wereld
+  // grond: één grote plaat, bovenkant op de hoogte van het wegdek
+  solid(R.ColliderDesc.cuboid((BX1 - BX0) / 2 + 400, 1, (BZ1 - BZ0) / 2 + 400).setTranslation((BX0 + BX1) / 2, GROUND_Y - 1, (BZ0 + BZ1) / 2), G.ground);
+  // gevels en boomstammen: de plattegrond van elk gebouw als muur en elke stam als zeskantige zuil, alles in één
+  // driehoeksnet (één botsvorm met een eigen zoekboom is veel sneller dan tienduizenden losse cilinders)
+  {
+    let v = [], idx = [];
+    const wall = (ax, az, bx, bz, y0, y1) => { const k = v.length / 3; v.push(ax, y0, az, bx, y0, bz, bx, y1, bz, ax, y1, az); idx.push(k, k + 1, k + 2, k, k + 2, k + 3); };
+    for (const fp of BUILD_SHAPES) for (let i = 0; i < fp.length; i++) {
+      const [ax, az] = fp[i], [bx, bz] = fp[(i + 1) % fp.length]; if (Math.hypot(bx - ax, bz - az) > 0.02) wall(ax, az, bx, bz, -1, 7);
+    }
+    for (const t of TREES) { const r = 0.2 + t.h * 0.012; for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2, b = ((k + 1) / 6) * Math.PI * 2; wall(t.x + Math.cos(a) * r, t.z + Math.sin(a) * r, t.x + Math.cos(b) * r, t.z + Math.sin(b) * r, -1, 4); } }
+    solid(R.ColliderDesc.trimesh(new Float32Array(v), new Uint32Array(idx)), G.wall);
+  }
+  // de rand van de kaart
+  for (const [x, z, hx, hz] of [[BX0 + 14, (BZ0 + BZ1) / 2, 1, (BZ1 - BZ0) / 2], [BX1 - 14, (BZ0 + BZ1) / 2, 1, (BZ1 - BZ0) / 2], [(BX0 + BX1) / 2, BZ0 + 14, (BX1 - BX0) / 2, 1], [(BX0 + BX1) / 2, BZ1 - 14, (BX1 - BX0) / 2, 1]])
+    solid(R.ColliderDesc.cuboid(hx, 4, hz).setTranslation(x, 3, z), G.wall);
+  // bruggen: het dek met een korte oprit aan elk eind, en een leuning langs beide kanten
+  for (const r of ROADS) {
+    if (!r.b || !bridgeInfo.has(r)) continue;
+    const { cum, len } = bridgeInfo.get(r), hw = r.w / 2, v = [], idx = [], wall = [], widx = [];
+    const at = (d) => { let i = 0; while (i < cum.length - 2 && cum[i + 1] < d) i++; const t = clamp((d - cum[i]) / ((cum[i + 1] - cum[i]) || 1), 0, 1); return { i, t, x: r.pts[i][0] + (r.pts[i + 1][0] - r.pts[i][0]) * t, z: r.pts[i][1] + (r.pts[i + 1][1] - r.pts[i][1]) * t }; };
+    const pts = [], steps = Math.max(8, Math.ceil(len / 0.8));
+    for (let k = 0; k <= steps; k++) { const p = at((k / steps) * len); pts.push([p.x, p.z, 0.09 + bridgeHeightAt(r, p.i, p.t)]); }
+    const dir = (k) => { const a = pts[Math.max(0, k - 1)], b = pts[Math.min(pts.length - 1, k + 1)], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; return [(b[0] - a[0]) / l, (b[1] - a[1]) / l]; };
+    const [sx, sz] = dir(0), [ex, ez] = dir(pts.length - 1);
+    const line = [[pts[0][0] - sx * 1.5, pts[0][1] - sz * 1.5, GROUND_Y], ...pts, [pts.at(-1)[0] + ex * 1.5, pts.at(-1)[1] + ez * 1.5, GROUND_Y]];
+    line.forEach((p, k) => {
+      const [tx, tz] = k === 0 ? [sx, sz] : k === line.length - 1 ? [ex, ez] : dir(k - 1), nx = -tz, nz = tx;
+      v.push(p[0] + nx * hw, p[2], p[1] + nz * hw, p[0] - nx * hw, p[2], p[1] - nz * hw);
+      if (k) { const a = (k - 1) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+      if (k > 0 && k < line.length - 1) for (const s of [1, -1]) { const w = wall.length / 3; wall.push(p[0] + nx * hw * s, p[2] - 0.5, p[1] + nz * hw * s, p[0] + nx * hw * s, p[2] + 1.1, p[1] + nz * hw * s); }
+    });
+    solid(R.ColliderDesc.trimesh(new Float32Array(v), new Uint32Array(idx)), G.ground);
+    // leuningen: per kant een strook tussen opeenvolgende paaltjes (2 hoekpunten per stap, links en rechts om en om)
+    const n = (line.length - 2);
+    for (let s = 0; s < 2; s++) for (let k = 0; k < n - 1; k++) { const a = (k * 2 + s) * 2, b = ((k + 1) * 2 + s) * 2; widx.push(a, b, a + 1, a + 1, b, b + 1); }
+    if (widx.length) solid(R.ColliderDesc.trimesh(new Float32Array(wall), new Uint32Array(widx)), G.wall);
+  }
+  // wortelbulten: per bult een hoogteveld in zijn eigen richting, met dezelfde hoogtes als het wegdek
+  for (const b of BUMPS) {
+    const c0 = -0.6, c1 = b.len + 0.1, a0 = -b.hw - 0.05, a1 = b.hw + 0.05, nu = Math.max(2, Math.ceil((c1 - c0) / 0.15)), nv = Math.max(2, Math.ceil((a1 - a0) / 0.15));
+    const hts = new Float32Array((nv + 1) * (nu + 1));
+    for (let j = 0; j <= nu; j++) for (let i = 0; i <= nv; i++) { const c = c0 + (c1 - c0) * j / nu, a = a0 + (a1 - a0) * i / nv; hts[j * (nv + 1) + i] = bumpHeight(b.x + b.ux * c + b.vx * a, b.z + b.uz * c + b.vz * a); }
+    const cc = (c0 + c1) / 2, ca = (a0 + a1) / 2;
+    world.createCollider(R.ColliderDesc.heightfield(nv, nu, hts, { x: c1 - c0, y: 1, z: a1 - a0 }).setTranslation(b.x + b.ux * cc + b.vx * ca, GROUND_Y, b.z + b.uz * cc + b.vz * ca)
+      .setRotation(yawQ(Math.atan2(-b.uz, b.ux))).setCollisionGroups(groups(G.bump, 0xffff)), fixed);
+  }
+
+  // ---- jouw wagen
+  let body = null, car = null, W = [], mass = 1, Q = new THREE.Quaternion(), F = new THREE.Vector3(), U = new THREE.Vector3(), RV = new THREE.Vector3();
+  function setVehicle() {
+    if (car) { world.removeVehicleController(car); car = null; }
+    if (body) { world.removeRigidBody(body); body = null; }
+    const V = VEH, P = V.phys, L = V.wb + V.front + V.rear, w = 2 * V.half; mass = P.mass;
+    const inertia = { x: (mass / 12) * (P.h * P.h + L * L), y: (mass / 12) * (w * w + L * L), z: (mass / 12) * (w * w + P.h * P.h) };
+    body = world.createRigidBody(R.RigidBodyDesc.dynamic().setTranslation(state.x, GROUND_Y + 0.05, state.z).setRotation(yawQ(state.h)).setCcdEnabled(true).setAngularDamping(0.3)
+      .setAdditionalMassProperties(mass, { x: 0, y: P.cg[0], z: P.cg[1] }, inertia, { x: 0, y: 0, z: 0, w: 1 }));
+    const hy = (P.h - P.clear) / 2;
+    world.createCollider(R.ColliderDesc.roundCuboid(V.half - 0.06, hy - 0.06, L / 2 - 0.06, 0.06).setTranslation(0, P.clear + hy, (V.rear - V.wb - V.front) / 2)
+      .setDensity(0).setFriction(0.5).setRestitution(0.15).setCollisionGroups(groups(G.player, G.ground | G.wall | G.npc)), body);
+    car = world.createVehicleController(body);
+    // ophangpunt zo hoog dat de wagen in rust met de wielen precies op de grond staat
+    const sag = 9.81 / ((V.three ? 3 : 4) * P.k), conn = V.wheelR + P.rest - sag, tw = V.track / 2;
+    const list = V.three ? [[0, -V.wb, 1], [-tw, 0, 0], [tw, 0, 0]] : [[-tw, -V.wb, 1], [-tw, 0, 0], [tw, -V.wb, 1], [tw, 0, 0]]; // zelfde volgorde als de wielen van het model
+    W = list.map(([x, z, front], i) => {
+      car.addWheel({ x, y: conn, z }, { x: 0, y: -1, z: 0 }, { x: 1, y: 0, z: 0 }, P.rest, V.wheelR);
+      car.setWheelSuspensionStiffness(i, P.k); car.setWheelSuspensionCompression(i, P.dc); car.setWheelSuspensionRelaxation(i, P.dr);
+      car.setWheelMaxSuspensionTravel(i, P.travel); car.setWheelMaxSuspensionForce(i, mass * 9.81 * 4); car.setWheelFrictionSlip(i, P.mu); car.setWheelSideFrictionStiffness(i, 1);
+      return { front: !!front, conn, len: P.rest - sag, last: P.rest - sag };
+    });
+    teleport(state.x, state.z, state.h);
+  }
+  function teleport(x, z, h) {
+    if (!body) return;
+    body.setTranslation({ x, y: GROUND_Y + 0.08, z }, true); body.setRotation(yawQ(h), true);
+    body.setLinvel({ x: 0, y: 0, z: 0 }, true); body.setAngvel({ x: 0, y: 0, z: 0 }, true); body.resetForces(true);
+    sync();
+  }
+  function sync() {
+    const t = body.translation(), q = body.rotation(), lv = body.linvel();
+    Q.set(q.x, q.y, q.z, q.w); F.set(0, 0, -1).applyQuaternion(Q); U.set(0, 1, 0).applyQuaternion(Q); RV.set(1, 0, 0).applyQuaternion(Q);
+    state.x = t.x; state.z = t.z; state.y = t.y - GROUND_Y; state.h = Math.atan2(-F.x, -F.z);
+    state.v = lv.x * F.x + lv.y * F.y + lv.z * F.z; state.vx = lv.x; state.vz = lv.z;
+  }
+
+  // ---- de politie en het verkeer als bewegende blokken
+  const npcs = new Map();
+  function npc(key, on, x, z, h, nose, tail, hw, hy) {
+    let rec = npcs.get(key);
+    if (!rec) {
+      const b = world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(0, -60, 0));
+      world.createCollider(R.ColliderDesc.cuboid(hw, hy, (nose + tail) / 2).setCollisionGroups(groups(G.npc, G.player)).setFriction(0.4).setRestitution(0.1), b);
+      npcs.set(key, (rec = { b, on: false, x: 0, z: 0 }));
+    }
+    if (!on) { if (rec.on) { rec.b.setTranslation({ x: 0, y: -60, z: 0 }, false); rec.on = false; } return; }
+    const co = (nose - tail) / 2, cx = x - Math.sin(h) * co, cz = z - Math.cos(h) * co, tgt = { x: cx, y: GROUND_Y + hy, z: cz };
+    if (!rec.on || Math.hypot(cx - rec.x, cz - rec.z) > 8) { rec.b.setTranslation(tgt, true); rec.b.setRotation(yawQ(h), true); rec.on = true; }
+    else { rec.b.setNextKinematicTranslation(tgt); rec.b.setNextKinematicRotation(yawQ(h)); }
+    rec.x = cx; rec.z = cz;
+  }
+  const NPC_H = { hatch: 0.72, estate: 0.72, van: 0.98, tractor: 1.3, bike: 0.6 };
+  function syncNPC() {
+    for (const c of COPS.cars) npc(c, c.mode !== 'off', c.x, c.z, c.h, 3.48, 1.02, 0.87, 0.75);
+    for (const a of TRAFFIC.agents) {
+      npc(a, !!a.on, a.x, a.z, a.h, a.m.nose, a.m.tail, a.m.hw, NPC_H[a.type] || 0.75);
+      if (a.trailerParts) npc(a.trailerParts, !!(a.on && a.trailer), a.trailer?.x ?? 0, a.trailer?.z ?? 0, a.trailer?.h ?? 0, 2.0, a.trailerParts.m.tail, a.trailerParts.m.hw, 0.7);
+    }
+  }
+
+  // ---- een stap: gas, rem en stuur op de wielen, lucht- en rolweerstand op de wagen
+  function drive(dt, c) {
+    syncNPC();
+    const P = VEH.phys, n = Math.max(1, Math.ceil(dt * 60 - 1e-6)), h = dt / n, driven = W.filter((w) => !w.front).length;
+    W.forEach((w, i) => {
+      if (w.front) car.setWheelSteering(i, c.steer);
+      car.setWheelEngineForce(i, w.front ? 0 : (c.force * mass) / driven);
+      car.setWheelBrake(i, (c.brake * mass * h) / W.length);
+      car.setWheelFrictionSlip(i, P.mu * c.grip);
+    });
+    state.pvx = state.vx || 0; state.pvz = state.vz || 0;
+    for (let k = 0; k < n; k++) {
+      body.resetForces(true);
+      const lv = body.linvel(), sp = Math.hypot(lv.x, lv.z);
+      if (sp > 0.02) { const f = (c.drag * sp + c.roll * Math.min(1, sp / 0.5)) * mass; body.addForce({ x: (-lv.x / sp) * f, y: 0, z: (-lv.z / sp) * f }, true); }
+      car.updateVehicle(h, undefined, RAY);
+      rollFix(P.roll);
+      world.timestep = h; world.step();
+    }
+    sync();
+  }
+  // Rapier laat de zijwaartse kracht van de banden op de hoogte van het zwaartepunt aangrijpen (roll influence 0,1,
+  // vast in de code): dan helt een wagen bijna niet over en kan een Ape nooit omgaan. Hier komt het ontbrekende
+  // kantelmoment erbij, zodat de kracht aangrijpt waar hij hoort: onderaan het wiel (rho = 1 is echt).
+  const qv = new THREE.Quaternion(), axw = new THREE.Vector3(), upw = new THREE.Vector3(), arm = new THREE.Vector3(), tq = new THREE.Vector3();
+  function rollFix(rho) {
+    const q = body.rotation(); qv.set(q.x, q.y, q.z, q.w); upw.set(0, 1, 0).applyQuaternion(qv);
+    const com = body.worldCom(); let tx = 0, ty = 0, tz = 0;
+    for (let i = 0; i < W.length; i++) {
+      if (!car.wheelIsInContact(i)) continue;
+      const J = car.wheelSideImpulse(i); if (!J) continue;
+      const d = car.wheelSteering(i) || 0, cp = car.wheelContactPoint(i);
+      axw.set(Math.cos(d), 0, -Math.sin(d)).applyQuaternion(qv).multiplyScalar(J);
+      const dd = upw.x * (cp.x - com.x) + upw.y * (cp.y - com.y) + upw.z * (cp.z - com.z);
+      tq.crossVectors(arm.copy(upw).multiplyScalar(dd * (rho - 0.1)), axw); tx += tq.x; ty += tq.y; tz += tq.z;
+    }
+    if (tx || ty || tz) body.applyTorqueImpulse({ x: tx, y: ty, z: tz }, true);
+  }
+  // per wiel: hoe ver de vering is ingedrukt (voor de wielen in beeld en het gebonk), en of hij de grond raakt
+  function wheelInfo(i) { const L = car.wheelSuspensionLength(i) ?? W[i].len; return { y: W[i].conn - L, len: L, contact: car.wheelIsInContact(i) }; }
+  return { ok: true, groundY: GROUND_Y, world, setVehicle, teleport, drive, wheelInfo, get wheels() { return W; }, get body() { return body; }, quat: Q, up: U, fwd: F, right: RV, groups, G };
+})();
 
 // ------------------------------------------------------------------ nabewerking
 // Op de computer gaat het beeld door een EffectComposer: N8AO tekent de scène en legt zachte schaduw in hoeken en
@@ -3539,7 +3807,7 @@ function adaptQuality(dt) {
 // één stap spel: rijden, politie, de klok van de dienst en bezorgen
 function step(dt, now) {
   if (state.mode === 'drive' || state.mode === 'roam') {
-    if (state.event) updateEvent(dt); else physics(dt);
+    drivePhysics(dt, now);
     COPS.update(dt, now);
     if (state.mode === 'drive') { state.time += dt; if (GAME.job) GAME.job.t += dt; }
     updateNav(dt);
@@ -3558,7 +3826,10 @@ function frame(now) {
   frame.prev = now;
   step(dt, now);
   // Ape plaatsen
-  ape.position.set(state.x, state.y + state.sinkY + state.susY + 0.03, state.z); ape.rotation.set(state.pitch, state.h, state.bumpRoll, 'YXZ');
+  if (PHYS.ok) {
+    ape.position.set(state.x, state.y + PHYS.groundY + state.sinkY, state.z); ape.quaternion.copy(PHYS.quat);
+    PHYS.wheels.forEach((w, i) => { const m = wheelMounts[i]; if (m && w.vis !== undefined) m.o.position.y = m.y + (w.vis - VEH.wheelR); });
+  } else { ape.position.set(state.x, state.y + state.sinkY + state.susY + 0.03, state.z); ape.rotation.set(state.pitch, state.h, state.bumpRoll, 'YXZ'); }
   // kantelen om het buitenste achterwiel
   const pivot = (state.tip < 0 ? 1 : -1) * (VEH.track / 2 + 0.07);
   tipper.rotation.z = state.tip; tipper.position.set(pivot * (1 - Math.cos(state.tip)), -pivot * Math.sin(state.tip), 0);
@@ -3616,7 +3887,7 @@ function showStartCard() {
   $('bestPts').textContent = GAME.best ? fmtPts(GAME.best) : '';
 }
 function chooseVehicle(id) {
-  setVehicle(id);
+  setVehicle(id); if (PHYS.ok) PHYS.setVehicle();
   $('startTitle').innerHTML = VEH.title;
   $('introText').textContent = `Je ${VEH.desc} staat voor Soemeersingel 25. In een dienst van vijf minuten bezorg je zoveel mogelijk adressen in Helenaveen: elk adres levert punten op, en hoe sneller je er bent, hoe meer fooi. Rij je te hard en ziet de politie het, dan komen ze met zwaailicht achter je aan. Schud ze af voor je weer kunt bezorgen, want houden ze je aan, dan kost de bekeuring punten.`;
   $('kGas').textContent = VEH.gasText; $('kTurbo').textContent = VEH.turboText; $('kSteer').textContent = VEH.steerText;
@@ -3629,6 +3900,7 @@ document.querySelectorAll('#pick button').forEach((b) => b.addEventListener('cli
 // een dienst begint bij Soemeersingel 25 (of waar je nu staat) met het eerste adres
 function startShift(atStart) {
   if (atStart) Object.assign(state, { x: W.start.x, z: W.start.z, h: W.start.h, v: 0, steer: 0, roll: 0, tip: 0, tiltTime: 0, event: null, sinkY: 0, y: 0, lastSafe: null, susY: 0, susV: 0, pitch: 0, pitchV: 0 });
+  if (PHYS.ok) PHYS.teleport(state.x, state.z, state.h);
   Object.assign(GAME, { score: 0, delivered: 0, fines: 0, tick: -1, job: null });
   startJob((GAME.next || pickJob(state.x, state.z, true)).a); GAME.next = null;
   state.time = 0; state.mode = 'drive'; camInit = false; last = performance.now(); navTimer = 0;
@@ -3688,9 +3960,9 @@ const boot = (data) => {
   requestAnimationFrame(frame);
 };
 window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
-window.__ape = { state, keys, routeFrom, DEST, camera, THREE, scene, bumpHeight, BUMPS, LIFE, COPS, TRAFFIC, GAME, ADDRS, NODES, startShift, endShift, deliver, pickJob, startJob, get aerialLoaded() { return aerialLoaded; }, get post() { return post; }, get frames() { return renderer.info.render.frame; },
+window.__ape = { state, keys, routeFrom, DEST, camera, THREE, scene, bumpHeight, BUMPS, BUILD_SHAPES, TREES, pip, inWater, LIFE, COPS, TRAFFIC, PHYS, GAME, ADDRS, NODES, startShift, endShift, deliver, pickJob, startJob, get aerialLoaded() { return aerialLoaded; }, get post() { return post; }, get VEH() { return VEH; }, get frames() { return renderer.info.render.frame; },
   sim(seconds, dt = 1 / 60) { let maxSus = 0, thumps = 0, events = []; const t0 = state.lastThump;
-    for (let t = 0; t < seconds; t += dt) { if (state.event) { updateEvent(dt); if (!events.includes(state.event)) events.push(state.event); } else physics(dt); updateNav(dt); maxSus = Math.max(maxSus, Math.abs(state.susY)); if (state.lastThump !== t0) thumps++; }
+    for (let t = 0; t < seconds; t += dt) { drivePhysics(dt); if (state.event && !events.includes(state.event)) events.push(state.event); updateNav(dt); maxSus = Math.max(maxSus, Math.abs(state.susY)); if (state.lastThump !== t0) thumps++; }
     return { x: +state.x.toFixed(1), z: +state.z.toFixed(1), v: +(state.v * 3.6).toFixed(1), maxSus: +maxSus.toFixed(3), events, street: streetShown }; },
   // hele spelstappen met een eigen klok (voor tests zonder beeld); each(t) mag sturen
   run(seconds, each, dt = 1 / 30) { let t = this.t || performance.now(); for (let k = 0; k < seconds / dt; k++) { t += dt * 1000; each?.(t); step(dt, t); LIFE.update(dt, t); if (state.mode === 'done') break; } this.t = t; return t; } };

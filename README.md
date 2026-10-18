@@ -21,6 +21,14 @@ Een dienst duurt vijf minuten. Je krijgt steeds een willekeurig adres in het dor
 
 Er rijden steeds twee witte politiewagens rond. Overal geldt de echte maximumsnelheid uit OpenStreetMap (veel 30 in het dorp, 60 erbuiten), die zie je naast je teller. Rij je meer dan 5 km/u te hard en ziet een politiewagen het, dan gaan zwaailicht en sirene aan en komen ze achter je aan, zoals in GTA. Hoe langer de achtervolging duurt, hoe meer sterren en hoe meer wagens; een politiewagen rammen helpt ook niet. Zolang ze achter je aan zitten kun je niet bezorgen. Blijf lang genoeg uit hun zicht (achter de huizen, of gewoon verder weg) en ze geven het op, wat je wat punten oplevert. Val je stil met een politiewagen tegen je aan, dan ben je aangehouden en kost de bekeuring 100 punten per ster.
 
+## Rijden
+
+De wagens rijden met echte physics (Rapier): elk heeft zijn eigen massa, zwaartepunt en vering per wiel. Ze hellen over in de bocht, duiken bij het remmen, stuiteren over de wortelbulten en glijden weg als je de grip kwijtraakt, op zand en gras eerder dan op asfalt. Een Ape neem je op snelheid niet op vol stuur: dan gaat hij op twee wielen en daarna om. Huizen, bomen en brugleuningen houden je echt tegen.
+
+## Verkeer
+
+Om je heen rijdt verkeer: auto's, bestelbussen, trekkers (soms met een aanhanger vol champignonkratten of aarde) en fietsers, en een flink deel komt je over je route tegemoet. Ze houden rechts, remmen voor wat er voor ze rijdt, wijken op smalle weggetjes uit naar de berm, halen een fietser of trekker in als de weg vrij is en gaan opzij voor een politiewagen met zwaailicht. Sta je stil in de weg, dan toeteren ze of bellen ze. Rijd je iemand aan terwijl de politie het ziet, dan komen ze achter je aan.
+
 ## Onderweg
 
 Af en toe staat er een bewoner in de voortuin die je nazwaait, of loopt er iemand langs de weg. Bij de voordeuren zitten katten; die rennen weg als je te dichtbij komt, en soms schiet er een vlak voor je de weg over. Op het kanaal zwemmen zwanen, sommige met grijze jongen erachteraan. Toeter je, dan zwaaien de mensen terug, schieten de katten weg en sissen de zwanen.
@@ -31,7 +39,7 @@ Pijltjes of WASD om te rijden, Shift voor opgevoerd (tot 70 km/u), spatie om te 
 
 ## Hoe het gemaakt is
 
-Alles staat in één HTML-bestand met [three.js](https://threejs.org). De wereld komt uit open data:
+Alles staat in één HTML-bestand met [three.js](https://threejs.org), [Rapier](https://rapier.rs) voor de physics en [N8AO](https://github.com/N8python/n8ao) voor de ambient occlusion (alleen op de computer, samen met een lichte bloom en SMAA). Met `#simpel` achter de URL rijd je met de oude eenvoudige besturing, met `#plat` zonder nabewerking. De wereld komt uit open data:
 
 - wegen, water en landgebruik: © [OpenStreetMap-bijdragers](https://www.openstreetmap.org/copyright) (ODbL)
 - bomen: het [AHN](https://www.ahn.nl) via PDOK. Langs de wegen zijn het eiken, in het bos dennen, berken en eiken. Het verschil tussen oppervlakte- en maaiveldmodel geeft de hoogte van alles boven de grond; zonder de gebouwen blijven de boomkruinen over, en elke kruintop wordt een boom met zijn echte hoogte en kruinstraal. De wortelbulten op de Soemeersingel en de Koolweg liggen bij die echte laanbomen.
