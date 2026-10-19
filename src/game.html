@@ -63,7 +63,34 @@ body { margin: 0; background: #a9c6dc; color: var(--sign-white); font-family: va
 .timer span { display: block; font-family: var(--font-sign); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; opacity: .7; font-weight: 600; }
 .boxes { display: grid; gap: 6px; }
 .timer.low b { color: #ff6b5e; }
-.hud.roam .boxes, .hud.roam .nav { display: none; }
+.hud.roam #shiftBox, .hud.roam.free .nav, .hud.roam .nav .pay { display: none; }
+/* rondrijden: het vak met de doelen opent de doelenlijst */
+.hud.roam #scoreBox { pointer-events: auto; cursor: pointer; border: 2px solid rgba(232,184,48,.85); }
+.hud.roam #scoreBox b { color: #f2c94c; }
+/* de cel van de veldwachter: tralies over het beeld */
+.cel { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, rgba(0,0,0,0) 0, rgba(0,0,0,0) calc(12.5% - 9px), #24272a calc(12.5% - 9px), #3a3e42 calc(12.5% - 5px), #24272a 12.5%), rgba(14,16,18,.35); }
+.cel::before, .cel::after { content: ""; position: absolute; left: 0; right: 0; height: 14px; background: linear-gradient(#3a3e42, #1d2022); }
+.cel::before { top: 14%; } .cel::after { bottom: 22%; }
+.cel.in { animation: celIn .9s ease-out both; }
+@keyframes celIn { from { box-shadow: inset 0 0 0 100vmax #000; } to { box-shadow: inset 0 0 0 100vmax rgba(0,0,0,0); } }
+@media (prefers-reduced-motion: reduce) { .cel.in { animation: none; } }
+/* de doelenlijst */
+.goals { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.goals li { display: grid; grid-template-columns: 26px 1fr auto; gap: 4px 10px; align-items: start; padding: 8px 10px 7px; border: 1.5px solid rgba(21,33,44,.14); border-radius: 10px; background: #fff; }
+.goals .mark { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; font-size: 13px; color: #fff; background: #c9c6bb; margin-top: 1px; }
+.goals li.done .mark { background: var(--ape-green); }
+.goals b { font-size: 15px; font-weight: 800; line-height: 1.2; color: var(--sign-blue); }
+.goals b small { font-size: 12px; font-weight: 700; color: #7a4a2a; margin-left: 4px; }
+.goals p { margin: 2px 0 0; font-size: 13px; line-height: 1.4; color: #3a4652; max-width: none; }
+.goals li.open p { color: #5a6470; }
+.goals .mini { appearance: none; border: 0; cursor: pointer; font: inherit; font-weight: 800; font-size: 12px; color: #fff; background: var(--sign-blue); border-radius: 7px; padding: 6px 9px 4px; white-space: nowrap; touch-action: manipulation; }
+.goals .mini:focus-visible { outline: 3px solid var(--sign-blue); outline-offset: 2px; }
+.meter { height: 10px; border-radius: 5px; background: rgba(21,33,44,.12); overflow: hidden; margin-top: -4px; }
+.meter i { display: block; height: 100%; background: var(--ape-green); border-radius: 5px; transition: width .4s; }
+@media (max-width: 420px) { .goals li { grid-template-columns: 22px 1fr; } .goals .mini { grid-column: 2; justify-self: start; } }
+.go.two { grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 440px) { .go.two { grid-template-columns: 1fr; } }
+.link { appearance: none; border: 0; background: none; padding: 0; font: inherit; font-weight: 700; color: var(--sign-blue); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; text-align: left; }
 /* verhaalbord: een kaartje met een jaartal, een titel en een stukje geschiedenis */
 .story { position: absolute; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); width: min(460px, calc(100vw - 32px)); box-sizing: border-box; background: var(--sign-white); color: var(--ink); border-radius: 10px; border-top: 6px solid #7a4a2a; box-shadow: 0 8px 26px rgba(0,0,0,.35); padding: 10px 16px 12px; pointer-events: auto; cursor: pointer; }
 .story small { display: block; font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #7a4a2a; }
@@ -133,6 +160,7 @@ body { margin: 0; background: #a9c6dc; color: var(--sign-white); font-family: va
 .lading b { font-size: 12px; font-weight: 800; line-height: 1.1; }
 .lading small { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; line-height: 1.2; color: #5a6470; }
 .lading small.breekbaar { color: var(--anwb-red); } .lading small.haast { color: #b06a00; } .lading small.zwaar, .lading small.klotst { color: var(--sign-blue); } .lading small.fooi { color: var(--ape-green); }
+.feel { margin-top: -4px !important; font-size: 14px !important; line-height: 1.4 !important; font-style: italic; color: #3a4652; }
 .warn { font-size: 14px !important; line-height: 1.4 !important; padding-left: 12px; border-left: 4px solid var(--anwb-red); }
 .go { position: sticky; bottom: -16px; z-index: 1; display: grid; margin: 0 -22px -22px; padding: 14px 22px calc(26px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(rgba(246,245,239,0), var(--sign-white) 30%); }
 /* op de computer: de toetsen in twee kolommen, zodat de kaart op een gewoon scherm past */
@@ -225,6 +253,7 @@ body.is-touch .tilt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
 <div class="hud" id="hud" hidden>
   <div class="flash" id="flash" hidden></div>
   <div class="dust" id="dust"></div>
+  <div class="cel" id="cel" hidden></div>
   <div class="story" id="story" hidden role="status"><small id="storyHead"></small><b id="storyTitle"></b><p id="storyText"></p></div>
   <div class="street" id="street" data-empty="1"><small>Helenaveen</small><span id="streetName"></span></div>
   <div class="wanted" id="wanted" hidden><b>Politie</b><span class="stars" id="stars">★☆☆</span><small id="wantedTxt"></small></div>
@@ -241,7 +270,7 @@ body.is-touch .tilt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
     <canvas id="speedo" width="340" height="340"></canvas>
     <div class="limit" id="limit" role="img" aria-label="maximumsnelheid"><span id="limitNum">30</span></div>
     <div class="boxes">
-      <div class="timer"><span>Punten</span><b id="score">0</b></div>
+      <div class="timer" id="scoreBox"><span id="scoreLbl">Punten</span><b id="score">0</b></div>
       <div class="timer" id="shiftBox"><span>Dienst</span><b id="timer">5:00</b></div>
     </div>
   </div>
@@ -269,12 +298,13 @@ body.is-touch .tilt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
         <button type="button" role="radio" data-v="kever" aria-checked="false"><svg viewBox="0 0 64 34" aria-hidden="true"><path d="M4 25q0-7 8-8 4-11 18-12 16 0 22 11 8 2 8 9z" fill="#b3121a"/><path d="M17 16q3-8 13-8.5 10 0 14 8.5z" fill="#cfe2ea"/><circle cx="16" cy="26" r="5" fill="#1b1d1f"/><circle cx="48" cy="26" r="5" fill="#1b1d1f"/></svg><span>Kever</span><small>100 km/u</small></button>
         <button type="button" role="radio" data-v="bus" aria-checked="false"><svg viewBox="0 0 64 34" aria-hidden="true"><path d="M5 27V12q0-8 8-8h42q4 0 4 5v18z" fill="#6e8f7a"/><path d="M5 15V12q0-8 8-8h42q4 0 4 5v6z" fill="#f1efe6"/><path d="M7 13l2-6h5v6zM17 7h9v6h-9zM29 7h9v6h-9zM41 7h9v6h-9zM52 7h5v6h-5z" fill="#cfe2ea"/><circle cx="16" cy="28" r="4.5" fill="#1b1d1f"/><circle cx="48" cy="28" r="4.5" fill="#1b1d1f"/></svg><span>VW-busje</span><small>95 km/u</small></button>
       </div>
+      <p class="feel" id="feelText"></p>
       <p id="introText"></p>
       <div class="route">
         <span class="ar">↑</span><span>Start: Soemeersingel 25</span><span class="km">5:00</span>
         <span class="ar">→</span><span id="firstAddr">Eerste adres</span><span class="km" id="routeKm"></span>
         <span class="ar">★</span><span id="bestLine">Beste dienst</span><span class="km" id="bestPts"></span>
-        <span class="ar">◆</span><span>Weetjes van toen gevonden</span><span class="km" id="weetjesN"></span>
+        <span class="ar">◆</span><span><button type="button" class="link" id="logBtn">Doelen van toen behaald</button></span><span class="km" id="weetjesN"></span>
       </div>
       <h2 class="sect">Wat je bezorgt</h2>
       <div class="lading" aria-label="Soorten lading">
@@ -296,10 +326,11 @@ body.is-touch .tilt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
         <span class="k"><kbd>H</kbd><span>toeteren</span></span>
         <span class="k"><kbd>C</kbd><span>camera: achter, cabine of hoog</span></span>
         <span class="k"><kbd>R</kbd><span>terug op de weg</span></span>
+        <span class="k"><kbd>T</kbd><span>doelen van toen (bij het ontdekken)</span></span>
       </div>
       <p class="touch-help small">Schuif met je duim over het stuur links. Rechts zitten gas en rem. Met Snel rijd je opgevoerd, Cam wisselt de camera en Weg zet je terug op de weg. Liggend speelt het fijnst.</p>
       <p class="credits">Kaart © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap-bijdragers</a> · gebouwen <a href="https://3dbag.nl" target="_blank" rel="noopener">3DBAG</a> (TU Delft, CC BY 4.0) · bomen <a href="https://www.ahn.nl" target="_blank" rel="noopener">AHN</a> · adressen en luchtfoto <a href="https://www.pdok.nl" target="_blank" rel="noopener">PDOK</a></p>
-      <div class="go"><button class="btn" id="startBtn" type="button">Begin je dienst</button></div>
+      <div class="go two"><button class="btn" id="startBtn" type="button">Begin je dienst</button><button class="btn secondary" id="exploreBtn" type="button">Ontdek Helenaveen</button></div>
     </div>
   </div>
 </div>
@@ -313,7 +344,23 @@ body.is-touch .tilt { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
       <p id="endText"></p>
       <div class="small" id="bestText"></div>
       <button class="btn" id="againBtn" type="button">Nog een dienst</button>
-      <button class="btn secondary" id="roamBtn" type="button">Blijf rondrijden</button>
+      <button class="btn secondary" id="roamBtn" type="button">Rij verder op ontdekking</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="logScreen" hidden>
+  <div class="card" role="dialog" aria-labelledby="logTitle">
+    <div class="cap"><span>Helenaveen van toen</span><span id="logCount"></span></div>
+    <div class="body">
+      <h1 id="logTitle">Doelen <em>van toen</em></h1>
+      <div class="meter" aria-hidden="true"><i id="logBar"></i></div>
+      <p class="small" id="logIntro"></p>
+      <h2 class="sect">Verhalen</h2>
+      <ul class="goals" id="logStories"></ul>
+      <h2 class="sect">Weetjes langs de weg</h2>
+      <ul class="goals" id="logWeetjes"></ul>
+      <div class="go"><button class="btn" id="logClose" type="button">Verder rijden</button></div>
     </div>
   </div>
 </div>
@@ -371,6 +418,9 @@ const ADDRS = W.addrs.map(([label, gx, gz, px, pz, node, cx, cz]) => {
   const k = label.lastIndexOf(' ');
   return { label, street: label.slice(0, k), num: label.slice(k + 1), gate: [D(gx), D(gz)], post: [D(px), D(pz)], node, addr: [D(cx), D(cz)] };
 });
+// benoemde plekken uit OpenStreetMap: bedrijven, boerderijen en monumenten
+const POIS = (W.pois || []).map(([name, kind, sub, x, z, label]) => ({ name, kind, sub, x: D(x), z: D(z), label }));
+const poiOf = (name) => POIS.find((p) => p.name === name);
 const DEST = { addr: W.dest.addr.map(D), gate: W.dest.gate.map(D), post: W.dest.post.map(D), node: W.dest.node, label: 'Koolweg 42', num: '42' };
 
 // ------------------------------------------------------------------ geometrie-hulpjes
@@ -1179,6 +1229,7 @@ const destGroup = new THREE.Group();
   const place = () => {
     const [px, pz] = DEST.post, ang = Math.atan2(DEST.gate[0] - DEST.addr[0], DEST.gate[1] - DEST.addr[1]);
     pole.position.set(px, 0.65, pz); plate.position.set(px, 1.45, pz); box.position.set(px, 1.0, pz); plate.rotation.y = box.rotation.y = ang;
+    pole.visible = plate.visible = box.visible = !DEST.bare; // een bordje van toen is zelf het doel
     beam.position.set(DEST.gate[0], 60, DEST.gate[1]); ring.position.set(DEST.gate[0], 0.12, DEST.gate[1]);
     drawNum();
   };
@@ -1495,6 +1546,8 @@ const VEHICLES = {
     wb: 1.7, track: 1.12, wheelR: 0.245, front: 0.25, rear: 0.66, half: 0.66, three: true, rev: 22,
     vmax: 45, vturbo: 70, acc: 2.6, accT: 3.4, tip: { a0: 5.0, a1: 0.25, lift: 6.3, tip: 7.0 }, lean: 0.055,
     phys: { mass: 420, cg: [0.5, -0.6], h: 1.7, clear: 0.3, k: 34, dc: 3.4, dr: 4.0, rest: 0.2, travel: 0.18, mu: 1.2, roll: 0.65 },
+    feel: { steer: [8.5, 9.5], lock: 0.72, brake: 5.2, curve: 2.2, gripF: 1, gripR: 1, sand: [0.7, 0.74], gravel: [0.88, 0.82], gust: 0, shake: [0.011, 26] },
+    feelText: 'Licht en wendbaar, met een stuur als van een scooter. De trommelremmen hebben wat meer weg nodig, en op snelheid gaat hij in de bocht op twee wielen.',
     cargo: { y: 0.65, z: 0, s: 1 },
     gears: [16, 31, 45], dial: 80, eye: [0, 1.44, -1.0], chase: [5.4, 2.1], orbit: 7, sound: { base: 38, span: 120, lp: 500, type: 'sawtooth' }, horn: [[415, 520], 'square'],
     turboLabel: 'OPGEVOERD', gasText: 'gas geven (de Ape haalt 45 km/u)', turboText: 'opgevoerd: tot 70 km/u', steerText: 'sturen; scherp sturen op snelheid kantelt hem',
@@ -1502,15 +1555,19 @@ const VEHICLES = {
   fiat: { id: 'fiat', name: 'Fiat 500', it: 'de Fiat', desc: 'rode Fiat 500', build: buildFiat,
     wb: 1.84, track: 1.12, wheelR: 0.27, tyreW: 0.13, front: 0.56, rear: 0.57, half: 0.67, rev: 32,
     vmax: 85, vturbo: 95, acc: 2.3, accT: 2.7, grip: 7.8, lean: 0.04,
-    phys: { mass: 560, cg: [0.46, -0.75], h: 1.32, clear: 0.24, k: 34, dc: 3.4, dr: 4.0, rest: 0.18, travel: 0.16, mu: 1.05, roll: 0.5 },
+    phys: { mass: 560, cg: [0.46, -0.75], h: 1.32, clear: 0.24, k: 40, dc: 2.6, dr: 3.0, rest: 0.18, travel: 0.16, mu: 1.05, roll: 0.5 },
+    feel: { steer: [7.5, 8.5], lock: 0.64, brake: 6.4, curve: 2.8, gripF: 1, gripR: 0.95, tail: 0.25, sand: [0.6, 0.66], gravel: [0.84, 0.78], gust: 0, shake: [0.006, 34] },
+    feelText: 'Klein en vinnig: hij stuurt direct, huppelt over de bulten en staat snel stil. Op zand en gras graven zijn kleine wieltjes zich in.',
     cargo: { y: 1.39, z: -0.68, s: 0.72, rack: true },
     gears: [25, 45, 65, 95], dial: 120, eye: [-0.3, 1.13, -1.28], chase: [5.8, 2.0], orbit: 7, sound: { base: 30, span: 88, lp: 420, type: 'square' }, horn: [[520, 620], 'square'],
     turboLabel: 'PLANKGAS', gasText: 'gas geven (de Fiat haalt 85 km/u)', turboText: 'plankgas: tot 95 km/u', steerText: 'sturen',
     endText: 'Het linnen dak mag open.' },
   kever: { id: 'kever', name: 'Kever', it: 'de Kever', desc: 'rode Volkswagen Kever', build: buildKever,
     wb: 2.4, track: 1.32, wheelR: 0.31, tyreW: 0.16, front: 0.86, rear: 0.82, half: 0.8, rev: 35,
-    vmax: 100, vturbo: 120, acc: 2.7, accT: 3.2, grip: 8.2, lean: 0.05,
-    phys: { mass: 820, cg: [0.52, -1.0], h: 1.5, clear: 0.26, k: 30, dc: 3.4, dr: 4.0, rest: 0.2, travel: 0.18, mu: 1.12, roll: 0.5 },
+    vmax: 100, vturbo: 120, acc: 3.2, accT: 3.7, grip: 8.2, lean: 0.05,
+    phys: { mass: 820, cg: [0.52, -1.0], h: 1.5, clear: 0.26, k: 26, dc: 3.0, dr: 3.2, rest: 0.2, travel: 0.18, mu: 1.12, roll: 0.5 },
+    feel: { steer: [5.2, 6.5], lock: 0.56, brake: 6.0, curve: 1.6, gripF: 1, gripR: 0.96, tail: 1, sand: [0.86, 0.92], gravel: [0.96, 0.94], gust: 0, shake: [0.005, 50] },
+    feelText: 'De motor ligt achterin, boven de aandrijfwielen: hij trekt flink op en komt het best door het zand. In een snelle bocht breekt de achterkant uit.',
     cargo: { y: 1.52, z: -1.16, s: 0.8, rack: true },
     gears: [30, 55, 85, 120], dial: 140, eye: [-0.33, 1.24, -1.62], chase: [6.4, 2.2], orbit: 8, sound: { base: 24, span: 76, lp: 360, type: 'sawtooth' }, horn: [[440, 554], 'sawtooth'],
     turboLabel: 'PLANKGAS', gasText: 'gas geven (de Kever haalt 100 km/u)', turboText: 'plankgas: tot 120 km/u', steerText: 'sturen',
@@ -1518,7 +1575,9 @@ const VEHICLES = {
   bus: { id: 'bus', name: 'VW-busje', it: 'het busje', desc: 'Samtgrüne Volkswagen T2', build: buildBus,
     wb: 2.4, track: 1.4, wheelR: 0.33, tyreW: 0.19, front: 0.75, rear: 1.36, half: 0.9, rev: 30,
     vmax: 95, vturbo: 110, acc: 2.0, accT: 2.4, tip: { a0: 6.0, a1: 0.12, lift: 7.4, tip: 8.4 }, lean: 0.08,
-    phys: { mass: 1250, cg: [0.8, -1.1], h: 1.95, clear: 0.3, k: 28, dc: 3.4, dr: 4.0, rest: 0.22, travel: 0.2, mu: 1.15, roll: 0.7 },
+    phys: { mass: 1250, cg: [0.8, -1.1], h: 1.95, clear: 0.3, k: 28, dc: 3.0, dr: 3.4, rest: 0.22, travel: 0.2, mu: 1.15, roll: 0.7 },
+    feel: { steer: [3.0, 3.8], lock: 0.5, brake: 4.8, curve: 2.0, gripF: 0.9, gripR: 1, sand: [0.64, 0.7], gravel: [0.86, 0.8], gust: 1, shake: [0.004, 60] },
+    feelText: 'Zwaar en hoog. Het grote stuur draait traag, de remmen hebben werk aan al dat gewicht, en buiten het dorp duwt de zijwind je opzij.',
     cargo: { y: 1.97, z: -0.75, s: 0.95, rack: true },
     gears: [25, 50, 75, 110], dial: 140, eye: [-0.42, 1.78, -2.45], chase: [7.4, 2.9], orbit: 9, sound: { base: 22, span: 70, lp: 340, type: 'sawtooth' }, horn: [[330, 415], 'sawtooth'],
     turboLabel: 'PLANKGAS', gasText: 'gas geven (het busje haalt 95 km/u)', turboText: 'plankgas: tot 110 km/u', steerText: 'sturen; een vol busje helt flink over in de bocht',
@@ -2321,7 +2380,7 @@ const COPS = (() => {
     state.event = 'busted'; state.eventT = 0; $('tilt').hidden = true;
     for (const c of cars) if (c.mode === 'chase') c.hold = true;
     beep([294, 220], 0.45, 'square', 0.14);
-    showToast('Aangehouden!', shift ? `bekeuring: ${fine} punten` : 'met een waarschuwing mag je door', 2800);
+    showToast('Aangehouden!', shift ? `${fine} punten boete, en mee naar de cel` : 'mee naar de cel van de veldwachter', 2800);
   }
   function think(now) {
     const kmh = Math.abs(state.v) * 3.6, speeding = !state.event && kmh > state.limit + 5;
@@ -3247,7 +3306,7 @@ const CARGO = (() => {
   }
   function refresh() {
     const j = GAME.job, item = j ? (j.stage === 'ophalen' ? null : j.item) : state.mode === 'intro' ? GAME.next?.item : null;
-    let id = item ? item.id : !j && VEH.id === 'ape' ? 'kool' : null;
+    let id = item ? item.id : (!j || j.seek) && VEH.id === 'ape' ? 'kool' : null;
     if (id === 'botanici' && VEH.id !== 'ape') id = null; // passagiers zitten binnen, niet op het dak
     if (shown === id) return;
     if (shown) anchor.remove(model(shown));
@@ -3275,7 +3334,7 @@ const CARGO = (() => {
   // de goudvis zwemt heen en weer, het water helt mee als je stuurt of remt
   function animate(now, lat, lon) {
     animateBees(now);
-    const st = GAME.job && GAME.job.stage !== 'ophalen' && GAME.job.item.stof && state.mode === 'drive';
+    const st = GAME.job && GAME.job.stage !== 'ophalen' && GAME.job.item?.stof && (state.mode === 'drive' || state.mode === 'roam');
     $('dust').style.opacity = st ? String(Math.min(0.9, 0.45 + Math.max(0, (dustPuff - now) / 1500) * 0.45)) : '0';
     const m = shown && models.get(shown); if (!m?.userData.fish) return;
     const f = m.userData.fish, t = now / 1000; f.position.x = Math.sin(t * 0.9) * 0.2; f.position.z = Math.sin(t * 1.7) * 0.08; f.rotation.y = Math.cos(t * 0.9) > 0 ? 0 : Math.PI;
@@ -3286,7 +3345,7 @@ const CARGO = (() => {
 })();
 // schade aan breekbare lading: klappen, bulten en klotsen kosten een deel van wat het adres oplevert
 function cargoShock(kind, s, now = performance.now()) {
-  const j = GAME.job; if (!j || state.mode !== 'drive' || !(s > 0)) return;
+  const j = GAME.job; if (!j || !j.item || (state.mode !== 'drive' && state.mode !== 'roam') || !(s > 0)) return;
   const it = j.item; if (j.stage === 'ophalen') return;
   if (it.stof && kind !== 'klots') CARGO.puff(now); // turfstof dwarrelt op
   const add = (it[kind] || 0) * s; if (!add || j.dmg >= 1) return;
@@ -3348,42 +3407,46 @@ const VERHALEN = [
   { id: 'eierbond', jaar: 'rond 1950', titel: 'Eierkisten voor de veiling',
     van: () => { const a = pickOne(onStreet('Koolweg')); return a && { ...a, noun: 'de kippenhouder' }; }, wie: 'bij een kippenhouder aan de Koolweg',
     naar: () => { const p = streetPoint('Sevenumseweg', [BX1, 1010]); return p && makePlace('Sevenumseweg', p[0], p[1], 'de eierwagen'); }, waar: 'naar de eierwagen op de Sevenumseweg',
-    lading: 'eierkisten', pay: 2.2,
+    lading: 'eierkisten', pay: 2.2, doel: 'Breng minstens de helft van de eieren heel bij de eierwagen.', gelukt: (j) => j.dmg <= 0.5,
     intro: 'Rond 1960 liepen er in Helenaveen 25.000 kippen rond, en de eieren gingen naar de veiling in Venlo. Haal de eierkisten op bij een kippenhouder aan de Koolweg.',
     geladen: 'Rij rustig: wortelbulten zijn funest voor eieren. Er reed hier ooit een eierwagen tegen een boom, dat gaf struif op de weg.',
     klaar: 'De Sevenumseweg heette vroeger de Tweede Wiek. Over deze weg ging de groente naar de veiling in Venlo.' },
   { id: 'melk', jaar: 'rond 1930', titel: 'Warme melk voor de kaasboerin',
     van: () => { const a = pickOne(ADDRS.filter((x) => Math.hypot(x.gate[0] - state.x, x.gate[1] - state.z) < 700)); return a && { ...a, noun: 'de boerderij' }; }, wie: 'bij een boerderij',
-    naar: (from) => { const c = ADDRS.filter((x) => Math.hypot(x.gate[0] - from.gate[0], x.gate[1] - from.gate[1]) > 500 && Math.hypot(x.gate[0] - from.gate[0], x.gate[1] - from.gate[1]) < 1100); const a = pickOne(c.length ? c : ADDRS); return { ...a, noun: 'de kaasboerin' }; }, waar: 'naar de kaasboerin op een Koningshoeve',
-    lading: 'melk', pay: 2, warm: true,
+    naar: (from) => {
+      const hoeve = pickOne(['Willem de Zwijgerhoeve', 'Wilhelminahoeve', 'Julianahoeve'].map(poiOf).filter((h) => h && Math.hypot(h.x - from.gate[0], h.z - from.gate[1]) > 300).map((h) => makePlace(h.name, h.x, h.z, 'de kaasboerin')).filter(Boolean));
+      if (hoeve) return hoeve;
+      const c = ADDRS.filter((x) => Math.hypot(x.gate[0] - from.gate[0], x.gate[1] - from.gate[1]) > 500 && Math.hypot(x.gate[0] - from.gate[0], x.gate[1] - from.gate[1]) < 1100); const a = pickOne(c.length ? c : ADDRS); return { ...a, noun: 'de kaasboerin' };
+    }, waar: 'naar de kaasboerin op een Koningshoeve',
+    lading: 'melk', pay: 2, warm: true, doel: 'Breng de melk naar de kaasboerin voordat hij afkoelt.', gelukt: (j) => !j.cold,
     intro: 'Vanaf 1927 maakten kaasboeren uit Holland kaas op de Koningshoeven, elke dag van melk die nog warm moest zijn, ook op zondag. Haal de melkbussen op bij een boerderij.',
     geladen: 'De melk moet warm aankomen: haal de kaasboerin voordat de tijd om is.',
-    klaar: 'De Koningshoeven kwamen er met steun van het Fonds Koning Willem III, dat nog altijd bestaat.' },
+    klaar: 'Vanaf 1908 bouwde de Maatschappij elf grote boerderijen, de Koningshoeven. Ze kregen namen uit het koningshuis, omdat het Fonds Koning Willem III aan een paar ervan meebetaalde.' },
   { id: 'helm', jaar: '1910', titel: 'De Gouden Helm',
     van: () => { const a = pickOne(onStreet('Helmhof')); if (a) return { ...a, noun: 'Gebbel Smolenaars' }; const p = streetPoint('Helmhof'); return p && makePlace('Helmhof', p[0], p[1], 'Gebbel Smolenaars'); }, wie: 'bij turfsteker Gebbel Smolenaars',
     naar: () => { const p = streetPoint('Koning Willem III-plein'); return p && makePlace('Koning Willem III-plein', p[0], p[1], 'het dorpsplein'); }, waar: 'naar het dorpsplein',
-    lading: 'helm', pay: 3,
+    lading: 'helm', pay: 3, doel: 'Breng de helm zonder grote deuken naar het dorpsplein.', gelukt: (j) => j.dmg <= 0.3,
     intro: 'Op 17 juni 1910 vond turfsteker Gebbel Smolenaars in het veen een verguld zilveren Romeinse ruiterhelm. Hij liet hem voor een dubbeltje per persoon bekijken. Haal de helm bij hem op.',
     geladen: 'Breng hem heel naar het dorpsplein: hij is ruim vijftienhonderd jaar oud.',
     klaar: 'Smolenaars kreeg 1.200 gulden voor de helm. Hij ligt nu in het Rijksmuseum van Oudheden in Leiden.' },
   { id: 'kermis', jaar: '1895', titel: 'De kermistaxi',
     van: () => { const p = streetPoint('Koning Willem III-plein'); return p && makePlace('Koning Willem III-plein', p[0], p[1], 'de kermis'); }, wie: 'op de kermis',
     naar: () => { const g = [BX0 + (BX1 - BX0) * 0.68, BZ1 - 40]; let best = null; for (const r of ROADS) { if (!r.d || r.b) continue; for (const [x, z] of r.pts) { if (z > BZ1 - 30) continue; const d = Math.hypot(x - g[0], z - g[1]); if (!best || d < best.d) best = { d, x, z }; } } return best && makePlace('De weg naar Meijel', best.x, best.z, 'de weg naar Meijel'); }, waar: 'naar de rand van het dorp, richting Meijel',
-    lading: 'botanici', pay: 2.2,
+    lading: 'botanici', pay: 2.2, doel: 'Breng de botanici weg zonder dat ze boos uitstappen.', gelukt: (j) => j.dmg < 1,
     intro: 'In 1895 kregen twee botanici door de kermis geen bed in Helenaveen. De rijtuigbaas was lichtelijk aangeschoten en reed altijd erg wild, dus een nuchtere knecht bracht ze naar Meijel. Jij bent die knecht.',
     geladen: 'Rij netjes: hard remmen, scherpe bochten en bulten vinden je passagiers niks.',
     klaar: 'In 1895 was de kermis nog een eetkermis met danstenten. Tegenwoordig staat hij op de tweede zondag van september op het Koning Willem III-plein.' },
   { id: 'bijen', jaar: 'rond 1930', titel: 'Bijen voor meester Theelen',
     van: () => { const a = pickOne(ADDRS.filter((x) => Math.hypot(x.gate[0] - state.x, x.gate[1] - state.z) < 800 && x.street !== 'Meester Theelenstraat')); return a && { ...a, noun: 'de imker' }; }, wie: 'bij een imker',
     naar: () => { const a = pickOne(onStreet('Meester Theelenstraat')); if (a) return { ...a, noun: 'meester Theelen' }; const p = streetPoint('Meester Theelenstraat'); return p && makePlace('Meester Theelenstraat', p[0], p[1], 'meester Theelen'); }, waar: 'naar meester Theelen',
-    lading: 'bijen', pay: 2,
+    lading: 'bijen', pay: 2, doel: 'Breng de bijenkasten weg met de meeste bijen er nog in.', gelukt: (j) => j.dmg <= 0.5,
     intro: 'Meester Theelen was vanaf 1922 schoolhoofd in Helenaveen, en ook imker. Haal een paar bijenkasten voor hem op.',
     geladen: 'Voorzichtig: bij een flinke klap ontsnappen de bijen.',
     klaar: 'Meester Theelen richtte ook de voetbalclub op en gaf tuinbouwcursussen. In de oorlog hielp hij neergestorte vliegers onderduiken.' },
   { id: 'turf', jaar: '1890', titel: 'Turfstrooisel voor Londen',
     van: () => { const p = streetPoint('Rector Nuijtsstraat'); return p && makePlace('Rector Nuijtsstraat', p[0], p[1], 'de turfstrooiselfabriek'); }, wie: 'bij de turfstrooiselfabriek',
     naar: () => { const a = pickOne(onStreet('Turfaak')); if (a) return { ...a, noun: 'de turfaak' }; const p = streetPoint('Turfaak'); return p && makePlace('Turfaak', p[0], p[1], 'de turfaak'); }, waar: 'naar de turfaak aan de vaart',
-    lading: 'turf', pay: 2,
+    lading: 'turf', pay: 2, doel: 'Breng de balen turfstrooisel naar de turfaak.', gelukt: () => true,
     intro: 'Aan de Rector Nuijtsstraat stond de eerste turfstrooiselfabriek van Nederland, uit 1881. Balen van 150 kilo gingen naar de paardenstallen van onder meer Londen en Parijs.',
     geladen: 'Zwaar, en stoffig: de werklieden kregen het stof duimen dik op hun kleren.',
     klaar: 'De turf ging met aken over de Helenavaart. Op de terugweg namen ze stadsvuil mee als mest, met munten en pijpenkoppen erin.' },
@@ -3419,15 +3482,20 @@ const WEETJES = [
   { id: 'zoeklicht', at: ['adres', 'Koolweg 40'], titel: 'Het zoeklicht', jaar: '1941', tekst: 'Hier stond in de oorlog een Duits zoeklicht. Jongens die "pang pang" riepen, kregen de schijnwerper vol in hun gezicht.' },
   { id: 'vaart', at: ['straat', 'Soemeersingel', [120, 520]], titel: 'Een privékanaal', jaar: '1853', tekst: 'De Helenavaart, 15,7 km lang, was van de Maatschappij. Tot na de oorlog dronken de bewoners het kanaalwater.' },
   { id: 'soemeer', at: ['straat', 'Soemeersingel', [-330, -700]], titel: 'Het Soemeer', jaar: 'sage', tekst: 'De Soemeersingel loopt dwars door het oude Soemeer. Volgens de sage was het de ingang van de hel, en op kerstnacht luidt er een verzonken klok.' },
-  { id: 'werf', at: ['straat', 'Geldersestraat', [600, 1480]], titel: 'De scheepswerf', jaar: '1860', tekst: 'Bij de Geldersestraat bouwde de Maatschappij haar eigen turfaken. In 1875 voeren er 32 aken en 2 stoomsleepboten.' },
+  { id: 'werf', at: ['straat', 'Geldersestraat', [945, 1462]], titel: 'De scheepswerf', jaar: '1860', tekst: 'Bij de Geldersestraat bouwde de Maatschappij haar eigen turfaken. In 1875 voeren er 32 aken en 2 stoomsleepboten.' },
   { id: 'corte', at: ['adres', 'Geldersestraat 9'], titel: 'Jules de Corte', jaar: '', tekst: 'Zanger Jules de Corte woonde aan de Geldersestraat. Het carillon van Helenaveen is naar hem genoemd.' },
   { id: 'koning', at: ['straat', 'Koning Willem III-plein'], titel: 'Koning Willem III', jaar: '1888', tekst: 'De koning was een jachtvriend van de familie Van de Griendt en schold in 1888 25.000 gulden aan schulden van arbeiders kwijt. Nu staat hier de kermis.' },
-  { id: 'helm', at: ['straat', 'Helmhof'], titel: 'De Gouden Helm', jaar: '1910', tekst: 'Turfsteker Gebbel Smolenaars vond een verguld zilveren Romeinse ruiterhelm. Hij ligt nu in het Rijksmuseum van Oudheden.' },
+  { id: 'helm', at: ['plek', 'tempel vindplaats Gouden Helm', 'Helmhof'], titel: 'De Gouden Helm', jaar: '1910', tekst: 'Hier in het veen vond turfsteker Gebbel Smolenaars een verguld zilveren Romeinse ruiterhelm. Een monument markeert de vindplaats; de helm ligt nu in het Rijksmuseum van Oudheden.' },
   { id: 'theelen', at: ['straat', 'Meester Theelenstraat'], titel: 'Meester Theelen', jaar: '1922', tekst: 'Schoolhoofd, imker en oprichter van de voetbalclub. Wie straf kreeg, moest in het turfhok.' },
   { id: 'pastoor', at: ['straat', 'Pastoor Kerssemakersstraat'], titel: 'De pastoor en het café', jaar: '1896', tekst: 'Pastoor Kerssemakers controleerde café Van Oers op drankmisbruik en nam heksenverhalen serieus.' },
   { id: 'maatschappij', at: ['straat', 'Maatschappijstraat'], titel: 'De Maatschappij', jaar: '1858', tekst: 'Alle huizen en alle grond waren van de Maatschappij Helenaveen. Tot 1872 moesten de arbeiders in de Maatschappijwinkel kopen.' },
-  { id: 'eiken', at: ['straat', 'Helenastraat'], titel: 'Laanbomen', jaar: '1875', tekst: 'De Maatschappij plantte bomen langs al haar wegen, in 1875 eiken langs de Helenastraat. In 2001 dreigden de laanbomen te verdrinken door hoger grondwater.' },
+  { id: 'eiken', at: ['straat', 'Helenastraat', [395, 1345]], titel: 'Laanbomen', jaar: '1875', tekst: 'De Maatschappij plantte bomen langs al haar wegen, in 1875 eiken langs de Helenastraat. In 2001 dreigden de laanbomen te verdrinken door hoger grondwater.' },
   { id: 'mariaveen', at: ['adresstraat', 'Kamp Mariaveen'], titel: 'Kamp Mariaveen', jaar: '1941', tekst: 'Eerst een werkkamp, na de oorlog een noodklooster met meisjesschool, en sinds 1980 het Biologisch Station van Staatsbosbeheer.' },
+  { id: 'veldwachter', at: ['adres', 'Soemeersingel 47'], titel: 'De veldwachter', jaar: '1930', tekst: 'Hier woonde de veldwachter, in 1930 Toon Joosten. Hij broedde ook kuikens uit, nam de lichtmeters op en hield toezicht op de hondenbelasting.' },
+  { id: 'kerkhof', at: ['straat', 'Hannes Joostenplein'], titel: 'Het oude kerkhof', jaar: '1875', tekst: 'Van 1875 tot 1897 was dit plein een begraafplaats, en er liggen nog resten van ruim 280 mensen. Het plein is genoemd naar tuinder en loco-burgemeester Hannes Joosten.' },
+  { id: 'zwijger', at: ['plek', 'Willem de Zwijgerhoeve'], titel: 'De Koningshoeven', jaar: '1908', tekst: 'De Maatschappij bouwde elf grote boerderijen, veel groter dan de gewone van vijf hectare, met namen uit het koningshuis, zoals Willem de Zwijger. De Meester Theelenstraat ligt op zijn oude weidegrond.' },
+  { id: 'drenkeling', at: ['straat', 'Soemeersingel', [-80, -250]], titel: 'Veldwachter Aarts', jaar: '1910', tekst: 'Op 11 juni 1910 haalde veldwachter Aarts met gevaar voor eigen leven een drenkeling uit de Helenavaart. Hij kreeg er een zilveren erepenning voor.' },
+  { id: 'hasj', at: ['straat', 'Oude Peelstraat', [-420, 1215]], titel: 'Hasj in het veevoer', jaar: '1978', tekst: 'Op 1 juni 1978 vond de politie 1400 kilo hasj in een schuur aan de Oude Peelstraat, verpakt in veevoederzakken.' },
   { id: 'luchtbed', at: ['straat', 'Soemeersingel', [180, 760]], titel: 'Luchtbedden op de vaart', jaar: '2001', tekst: '59 jongeren legden op het kanaal een rij luchtbedden van 101,20 meter: een record voor het Guinness Book.' },
 ];
 const TOEN = (() => {
@@ -3438,43 +3506,165 @@ const TOEN = (() => {
   const paal = new THREE.MeshStandardMaterial({ color: '#5a3a24', roughness: 0.8 }), goud = new THREE.MeshStandardMaterial({ color: '#e8b830', metalness: 0.9, roughness: 0.3, emissive: '#b07a00', emissiveIntensity: 1.1 });
   const coinGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.08, 28); coinGeo.rotateX(Math.PI / 2);
   const signs = [];
+  // staat het bordje in een sloot, dan aan de overkant of wat verder van de weg
+  const dry = (pl) => {
+    const [gx, gz] = pl.gate, ux = pl.post[0] - gx, uz = pl.post[1] - gz, d = Math.hypot(ux, uz) || 1;
+    for (const k of [1, -1, 1.6, -1.6, 0.7, -0.7, 2.3, -2.3]) { const x = gx + (ux / d) * d * k, z = gz + (uz / d) * d * k; if (!inWater(x, z)) return { x, z }; }
+    return null;
+  };
   for (const w of WEETJES) {
-    let p = null; const [kind, key, hint] = w.at;
-    if (kind === 'adres') { const a = addrOf(key); if (a) p = { x: a.post[0], z: a.post[1] }; }
-    else if (kind === 'adresstraat') { const a = onStreet(key)[0]; if (a) p = { x: a.post[0], z: a.post[1] }; }
-    else { const q = streetPoint(key, hint); if (q) { const pl = makePlace(w.titel, q[0] + 4, q[1] + 4); if (pl) p = { x: pl.post[0], z: pl.post[1] }; } }
+    // waar het bordje staat (p) en waar je heen rijdt om het te vinden (place, zonder paaltje: het bordje is het doel)
+    let p = null, place = null; const [kind, key, hint] = w.at;
+    const at = (pl) => { if (pl) { place = { ...pl, label: w.titel, bare: true }; p = dry(pl); } };
+    if (kind === 'adres') at(addrOf(key));
+    else if (kind === 'adresstraat') at(onStreet(key)[0]);
+    else if (kind === 'plek') { const q = poiOf(key); if (q) at(makePlace(w.titel, q.x, q.z)); if (!p && hint) { const r = streetPoint(hint); if (r) at(makePlace(w.titel, r[0] + 4, r[1] + 4)); } }
+    else { const q = streetPoint(key, hint); if (q) at(makePlace(w.titel, q[0] + 4, q[1] + 4)); }
     if (!p || inWater(p.x, p.z)) continue;
     const g = new THREE.Group(); g.position.set(p.x, 0, p.z); scene.add(g);
     add(g, new THREE.BoxGeometry(0.09, 2.2, 0.09), paal, 0, 1.1, 0).castShadow = true;
     const cv = document.createElement('canvas'); cv.width = 256; cv.height = 128; const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
     const draw = () => { const c = cv.getContext('2d'); c.fillStyle = '#7a4a2a'; c.fillRect(0, 0, 256, 128); c.strokeStyle = '#f4efe2'; c.lineWidth = 6; c.strokeRect(6, 6, 244, 116);
       c.fillStyle = '#f4efe2'; c.textAlign = 'center'; c.font = '800 24px Overpass, Arial, sans-serif'; c.fillText(w.jaar || 'Helenaveen', 128, 46); c.font = '900 26px Overpass, Arial, sans-serif';
-      const t = w.titel, wdt = c.measureText(t).width; if (wdt > 224) c.font = `900 ${Math.floor(26 * 224 / wdt)}px Overpass, Arial, sans-serif`; c.fillText(t, 128, 88); tex.needsUpdate = true; };
+      const t = w.titel, wdt = c.measureText(t).width; if (wdt > 224) c.font = `900 ${Math.floor(26 * 224 / wdt)}px Overpass, Arial, sans-serif`; c.fillText(t, 128, 88, 232); tex.needsUpdate = true; };
     draw(); document.fonts?.load('900 26px Overpass').then(draw).catch(() => {});
     const bord = add(g, new THREE.BoxGeometry(1.0, 0.5, 0.04), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 }), 0, 2.0, 0); bord.castShadow = true;
     // het bord kijkt naar de weg
     const road = roadAt(p.x, p.z, 4); if (road) g.rotation.y = Math.atan2(road.x - p.x, road.z - p.z);
     const coin = add(g, coinGeo, goud, 0, 2.8, 0); coin.visible = !found.has(w.id);
-    signs.push({ w, g, coin, x: p.x, z: p.z });
+    signs.push({ w, g, coin, x: p.x, z: p.z, place });
   }
+  // een weetje gevonden: munt weg, onthouden, en vertellen
+  function find(s, quiet) {
+    if (found.has(s.w.id)) return false;
+    found.add(s.w.id); save(); s.coin.visible = false;
+    if (quiet) return true;
+    const pts = state.mode === 'drive' ? 25 : 0; GAME.score += pts;
+    beep([784, 988, 1319], 0.12, 'triangle', 0.18);
+    showStory(`Weetje van toen ${count()} van ${signs.length}${pts ? ` · +${pts}` : ''}`, `${s.w.titel}${s.w.jaar && s.w.jaar !== 'sage' ? ` (${s.w.jaar})` : ''}`, s.w.tekst, 8000);
+    goalReached();
+    return true;
+  }
+  const count = () => signs.filter((s) => found.has(s.w.id)).length;
   let tick = 0;
   function update(dt, now) {
     for (const s of signs) if (s.coin.visible) { s.coin.rotation.y = now / 600; s.coin.position.y = 2.8 + Math.sin(now / 500 + s.x) * 0.08; }
     if ((tick -= dt) > 0 || (state.mode !== 'drive' && state.mode !== 'roam')) return; tick = 0.15;
     for (const s of signs) {
       if (found.has(s.w.id) || Math.abs(s.x - state.x) > 12 || Math.abs(s.z - state.z) > 12 || Math.hypot(s.x - state.x, s.z - state.z) > 9) continue;
-      found.add(s.w.id); save(); s.coin.visible = false;
-      const pts = state.mode === 'drive' ? 25 : 0; GAME.score += pts;
-      beep([784, 988, 1319], 0.12, 'triangle', 0.18);
-      showStory(`Weetje van toen ${found.size} van ${signs.length}${pts ? ` · +${pts}` : ''}`, `${s.w.titel}${s.w.jaar && s.w.jaar !== 'sage' ? ` (${s.w.jaar})` : ''}`, s.w.tekst, 8000);
+      find(s);
     }
   }
-  return { update, signs, get found() { return found.size; }, get total() { return signs.length; }, has: (id) => found.has(id) };
+  // het dichtstbijzijnde bordje dat je nog niet hebt gevonden (over de weg te bereiken)
+  function nearest(x, z) {
+    let best = null, bd = Infinity;
+    for (const s of signs) { if (found.has(s.w.id) || !GRAPH.has(s.place.node)) continue; const d = Math.hypot(s.x - x, s.z - z); if (d < bd) { bd = d; best = s; } }
+    return best;
+  }
+  return { update, signs, nearest, get found() { return count(); }, get total() { return signs.length; }, has: (id) => found.has(id),
+    unlock: (id, quiet) => { const s = signs.find((x) => x.w.id === id); return !!s && find(s, quiet); } };
+})();
+
+// ---- doelen van toen: elk verhaal en elk weetje is een doel, en wat je hebt gehaald onthoudt je browser
+const DOELEN = (() => {
+  const KEY = 'helenaveen-verhalen', ids = new Set(VERHALEN.map((v) => v.id));
+  let done = new Set(); try { done = new Set(JSON.parse(localStorage.getItem(KEY) || '[]')); } catch (e) { /* geen opslag */ }
+  return {
+    get total() { return VERHALEN.length + TOEN.total; },
+    get count() { return [...done].filter((id) => ids.has(id)).length + TOEN.found; },
+    has: (id) => done.has(id),
+    finish(id) { if (done.has(id)) return false; done.add(id); try { localStorage.setItem(KEY, JSON.stringify([...done])); } catch (e) { /* geen opslag */ } return true; },
+  };
+})();
+// alles binnen: een feestje
+function allDone() {
+  if (DOELEN.count < DOELEN.total) return;
+  setTimeout(() => { showToast('Alles gevonden!', 'je kent het Helenaveen van toen op je duimpje', 4000); beep([523, 659, 784, 1046], 0.2, 'triangle', 0.22); }, 2600);
+}
+// een weetje gevonden: tijdens het rondrijden meteen door naar het volgende bordje
+function goalReached() {
+  if (state.mode === 'roam') { showToast('Doel behaald!', `${DOELEN.count} van ${DOELEN.total} doelen van toen`, 2200); if (GAME.job?.seek) seekNext(); }
+  allDone();
+}
+// rondrijden: het navigatievak wijst naar het dichtstbijzijnde bordje dat je nog niet hebt gevonden
+function seekNext() {
+  const s = TOEN.nearest(state.x, state.z);
+  if (s) { seekSign(s); return; }
+  GAME.job = null; destGroup.visible = false; currentRoute = null; CARGO.refresh();
+}
+function seekSign(s) {
+  setDest(s.place); GAME.job = { seek: s, a: s.place, t: 0, dmg: 0 };
+  $('navTo').textContent = s.w.titel; $('navRule').textContent = s.place.street || 'een bordje van toen';
+  CARGO.refresh();
+}
+// een verhaal naar keuze uit de doelenlijst: een ophaal- en afleverplek zoeken die over de weg te bereiken zijn
+function startChosenStory(v) {
+  for (let k = 0; k < 8; k++) {
+    const from = v.van(); if (!from) continue; const to = v.naar(from); if (!to) continue;
+    const d = new Map(); shortest(from.node, d, null); if (!d.has(to.node)) continue;
+    startStoryJob({ v, from, to, m: d.get(to.node) }); return true;
+  }
+  showToast('Dit verhaal lukt nu niet', 'probeer het zo nog eens', 1800); return false;
+}
+
+// ---- naambordjes: bedrijven en boerderijen uit OpenStreetMap krijgen een bordje langs de weg
+const NAMEN = (() => {
+  const KONING = new Set(['Willem de Zwijgerhoeve', 'Wilhelminahoeve', 'Julianahoeve']); // Koningshoeven van de Maatschappij
+  const paal = new THREE.MeshStandardMaterial({ color: '#3b3f44', roughness: 0.7 }), plain = new THREE.MeshStandardMaterial({ color: '#e9e6dc', roughness: 0.7 });
+  const geoPaal = new THREE.BoxGeometry(0.06, 1.5, 0.06), geoBord = new THREE.BoxGeometry(1.7, 0.52, 0.04), list = [];
+  for (const p of POIS) {
+    if (p.kind !== 'bedrijf' && p.kind !== 'hoeve') continue;
+    const pl = makePlace(p.name, p.x, p.z); if (!pl) continue;
+    // bordjes die op elkaar zouden staan (of op het adrespaaltje) een stukje verder langs de weg
+    let [x, z] = pl.post; const road = roadAt(pl.gate[0], pl.gate[1], 1);
+    if (road) { const [ax, az] = road.r.pts[road.i], [bx, bz] = road.r.pts[road.i + 1], L = Math.hypot(bx - ax, bz - az) || 1; let k = 2.5; while (list.some((o) => Math.hypot(o.x - x - (bx - ax) / L * k, o.z - z - (bz - az) / L * k) < 2.4) && k < 12) k += 2.5; x += (bx - ax) / L * k; z += (bz - az) / L * k; }
+    if (inWater(x, z)) continue;
+    const hoeve = p.kind === 'hoeve', sub = KONING.has(p.name) ? 'Koningshoeve' : p.sub;
+    const cv = document.createElement('canvas'); cv.width = 512; cv.height = 156; const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+    const draw = () => {
+      const c = cv.getContext('2d'), bg = hoeve ? '#2f5a34' : '#f6f5ef', ink = hoeve ? '#f4efe2' : '#1d4f91';
+      c.fillStyle = bg; c.fillRect(0, 0, 512, 156); c.strokeStyle = ink; c.lineWidth = 6; c.strokeRect(9, 9, 494, 138);
+      c.fillStyle = ink; c.textAlign = 'center'; let f = 54; c.font = `900 ${f}px Overpass, Arial, sans-serif`; const w = c.measureText(p.name).width; if (w > 460) { f = Math.floor(f * 460 / w); c.font = `900 ${f}px Overpass, Arial, sans-serif`; }
+      c.fillText(p.name, 256, 78, 460); c.font = '700 26px Overpass, Arial, sans-serif'; c.globalAlpha = 0.8; c.fillText(sub.toUpperCase().split('').join(String.fromCharCode(8202)), 256, 122, 440); c.globalAlpha = 1; tex.needsUpdate = true;
+    };
+    draw(); document.fonts?.load('900 54px Overpass').then(draw).catch(() => {});
+    const g = new THREE.Group(); g.position.set(x, 0, z); scene.add(g);
+    for (const s of [-0.72, 0.72]) add(g, geoPaal, paal, s, 0.75, 0).castShadow = true;
+    const face = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 }); // voor- en achterkant met tekst, de randen effen
+    add(g, geoBord, [plain, plain, plain, plain, face, face], 0, 1.32, 0).castShadow = true;
+    const r = roadAt(x, z, 4); if (r) g.rotation.y = Math.atan2(r.x - x, r.z - z);
+    list.push({ p, x, z, g });
+  }
+  return { list };
+})();
+
+// ---- aangehouden: mee naar de cel van de oude veldwachterswoning aan de Soemeersingel
+const CEL = (() => {
+  const a = addrOf('Soemeersingel 47');
+  function lock() {
+    const T = state.mode === 'drive' ? 8 : 6, el = $('cel');
+    if (a) { state.x = a.gate[0]; state.z = a.gate[1]; respawn(''); }
+    state.event = 'cel'; state.eventT = 0; state.celT = T; state.v = 0;
+    COPS.release(performance.now() + T * 1000); // de politie laat je na het uitzitten even met rust
+    el.hidden = false; el.classList.remove('in'); void el.offsetWidth; el.classList.add('in');
+    beep([196, 147], 0.5, 'square', 0.12);
+    TOEN.unlock('veldwachter', true);
+    showStory(`Opgesloten · vrij over ${T}`, 'In de cel van de veldwachter', "De veldwachterswoning uit 1899 had vier kamers, een stal en 'een paar hokken die voor gevangenis moeten dienen'. De eerste veldwachter van de veenderij, Hendrik Kartner uit 1856, was de overgrootvader van Vader Abraham.", (T + 1.5) * 1000);
+  }
+  function update() {
+    const head = `Opgesloten · vrij over ${Math.max(1, Math.ceil(state.celT - state.eventT))}`; if ($('storyHead').textContent !== head) $('storyHead').textContent = head;
+    if (state.eventT < state.celT) return;
+    state.event = null; $('cel').hidden = true; $('story').hidden = true;
+    showToast('Je bent vrij!', 'en nu netjes rijden', 2000);
+    if (DOELEN.count === DOELEN.total) allDone();
+  }
+  return { lock, update };
 })();
 
 // de bestemming zetten: adres of plek, route erheen, paaltje erbij
 function setDest(a) {
   Object.assign(DEST, { addr: a.addr, gate: a.gate, post: a.post, node: a.node, label: a.label, num: a.num, noun: a.noun });
+  DEST.bare = !!a.bare;
   routeToDest(); destGroup.userData.place(); destGroup.visible = true;
   currentRoute = routeFrom(state.x, state.z);
 }
@@ -3511,14 +3701,22 @@ function arrive() {
   showStory(`${j.story.titel} · ${j.story.jaar}`, `${j.item.kort} geladen`, j.story.geladen, 8000);
 }
 function deliver() {
-  const j = GAME.job, pts = reward(j);
-  GAME.score += pts; GAME.delivered++; if (j.story) GAME.storyDone = (GAME.storyDone || 0) + 1;
+  const j = GAME.job, ok = !!j.story && j.story.gelukt(j), nieuw = ok && DOELEN.finish(j.story.id);
   beep([523, 659, 784], 0.22, 'triangle', 0.25); setTimeout(() => beep([1046], 0.35, 'triangle', 0.22), 230);
+  if (state.mode === 'roam') { // rondrijden: geen punten, wel een doel
+    showStory(`${j.story.titel} · ${ok ? 'doel behaald' : 'doel niet gehaald'}`, ok ? `Doel ${DOELEN.count} van ${DOELEN.total}` : 'Probeer het nog eens', j.story.klaar, 10000);
+    showToast(ok ? 'Doel behaald!' : 'Bezorgd, maar…', ok ? `${DOELEN.count} van ${DOELEN.total} doelen van toen` : j.story.doel.replace(/\.$/, '').toLowerCase(), 3000);
+    seekNext(); if (nieuw) allDone();
+    return;
+  }
+  const pts = reward(j);
+  GAME.score += pts; GAME.delivered++; if (j.story) GAME.storyDone = (GAME.storyDone || 0) + 1;
+  if (nieuw) allDone();
   // na elke twee gewone adressen een verhaal van toen, zolang er nog een is
   const s = !j.story && GAME.delivered % 3 === 2 ? pickStory() : null;
   if (s) startStoryJob(s); else startJob(pickJob(state.x, state.z, false).a, pickItem(j.item));
   const n = GAME.job;
-  if (j.story) showStory(`${j.story.titel} · bezorgd`, `+${pts} punten`, j.story.klaar, 9000);
+  if (j.story) showStory(`${j.story.titel} · ${ok ? 'doel behaald' : 'bezorgd'}`, `+${pts} punten`, j.story.klaar, 9000);
   showToast(`Bezorgd! +${pts}`, n.story ? `nu een verhaal van toen: ${n.story.titel.toLowerCase()}` : `nu ${n.item.naam} naar ${n.a.label}`, 2800);
 }
 
@@ -3690,7 +3888,9 @@ addEventListener('keydown', (e) => {
   if (e.repeat) return;
   if (e.code === 'KeyH') honk();
   if (e.code === 'KeyC') cycleCamera();
-  if (e.code === 'KeyR' && state.mode === 'drive') respawn('Terug op de weg');
+  if (e.code === 'KeyR' && (state.mode === 'drive' || state.mode === 'roam')) respawn('Terug op de weg');
+  if (e.code === 'KeyT') { if (state.mode === 'log') closeLog(); else if (state.mode === 'roam' || state.mode === 'intro') openLog(); }
+  if (e.code === 'Escape' && state.mode === 'log') closeLog();
 });
 addEventListener('keyup', (e) => { if (KEYMAP[e.code]) keys.delete(KEYMAP[e.code]); });
 addEventListener('blur', () => keys.clear());
@@ -3723,7 +3923,7 @@ document.querySelectorAll('#touch button[data-a]').forEach((b) => b.addEventList
   e.preventDefault(); initAudio();
   if (b.dataset.a === 'horn') honk();
   if (b.dataset.a === 'cam') cycleCamera();
-  if (b.dataset.a === 'reset' && state.mode === 'drive') respawn('Terug op de weg');
+  if (b.dataset.a === 'reset' && (state.mode === 'drive' || state.mode === 'roam')) respawn('Terug op de weg');
 }));
 addEventListener('contextmenu', (e) => { if (MOBILE) e.preventDefault(); });
 // Geen paginazoom: iOS negeert user-scalable=no en ziet stuur en gas tegelijk als knijpen.
@@ -3832,16 +4032,17 @@ function physics(dt) {
   // Shift: opgevoerd, dan haalt de Ape 70 km/u
   const turbo = keys.has('turbo');
   // zandpaden en het veld: iets langzamer dan op de klinkers, maar je kunt er nog flink doorheen
+  const F = VEH.feel;
   let vmax = (turbo ? VEH.vturbo : VEH.vmax) / 3.6, drag = 0.04, roll = 0.18;
-  if (offRoad) { vmax *= 0.68; drag = 0.12; roll = 0.3; }
-  else if (road.r.u) { vmax *= 0.88; drag = 0.06; roll = 0.22; }
+  if (offRoad) { vmax *= F.sand[0]; drag = 0.12; roll = 0.3; }
+  else if (road.r.u) { vmax *= F.gravel[0]; drag = 0.06; roll = 0.22; }
   const heavy = state.mode === 'drive' && GAME.job?.item.zwaar; if (heavy) vmax *= 0.88;
   // motor: trekt minder naarmate je harder gaat (50 cc)
   let acc = 0;
-  if (gas) { if (state.v < -0.2) acc = 6.5; else acc = (turbo ? VEH.accT : VEH.acc) * (heavy ? 0.68 : 1) * Math.max(0, 1 - Math.pow(Math.max(0, state.v) / vmax, 2.2)) + (state.v > vmax ? -2 : 0); }
+  if (gas) { if (state.v < -0.2) acc = F.brake; else acc = (turbo ? VEH.accT : VEH.acc) * (heavy ? 0.68 : 1) * Math.max(0, 1 - Math.pow(Math.max(0, state.v) / vmax, F.curve)) + (state.v > vmax ? -2 : 0); }
   if (!gas && state.v > vmax) acc -= 1.5; // motorrem na het loslaten van Shift
   const MAX_REV = VEH.rev / 3.6;
-  if (brake) { if (state.v > 0.3) acc = -6.5; else acc = -3.6 * (1 - Math.pow(Math.max(0, -state.v) / MAX_REV, 1.6)); }
+  if (brake) { if (state.v > 0.3) acc = -F.brake; else acc = -3.6 * (1 - Math.pow(Math.max(0, -state.v) / MAX_REV, 1.6)); }
   acc -= drag * state.v + roll * Math.sign(state.v) * (Math.abs(state.v) > 0.05 ? 1 : 0);
   state.v += acc * dt;
   if (!gas && !brake && Math.abs(state.v) < 0.08) state.v = 0;
@@ -3851,9 +4052,9 @@ function physics(dt) {
   // Ape en busje: vol stuur geeft meer dwarsversnelling naarmate je harder rijdt, en dan gaan ze om.
   // De andere auto's houden hun grip en sturen op snelheid gewoon minder ver.
   const T = VEH.tip, aLatMax = T ? T.a0 + T.a1 * v : VEH.grip;
-  const maxSteer = Math.min(0.6, Math.atan((VEH.wb * aLatMax) / Math.max(1, v * v)));
+  const maxSteer = Math.min(F.lock, Math.atan((VEH.wb * aLatMax) / Math.max(1, v * v)));
   const target = steerIn * maxSteer;
-  state.steer += (target - state.steer) * Math.min(1, dt * (steerIn ? 5.5 : 7));
+  state.steer += (target - state.steer) * Math.min(1, dt * (steerIn ? F.steer[0] : F.steer[1]));
   const yawRate = (state.v / VEH.wb) * Math.tan(state.steer);
   const lat = state.v * yawRate; // m/s², positief = naar links sturen
   const LIFT = T ? T.lift : 99, TIP = T ? T.tip : 99, leanRef = T ? T.lift : VEH.grip;
@@ -3921,9 +4122,10 @@ function updateEvent(dt) {
   state.eventT += dt;
   if (state.event === 'busted') {
     state.v *= Math.pow(0.02, dt); state.x += -Math.sin(state.h) * state.v * dt; state.z += -Math.cos(state.h) * state.v * dt;
-    if (state.eventT > 3) { state.event = null; state.v = 0; COPS.release(performance.now()); }
+    if (state.eventT > 2.4) CEL.lock();
     return;
   }
+  if (state.event === 'cel') { state.v = 0; CEL.update(); return; }
   if (state.event === 'splash') { state.sinkY = -Math.min(1.6, state.eventT * 1.5); $('tilt').hidden = true; state.roll = Math.sin(state.eventT * 3) * 0.1; state.v *= 0.9; state.x += -Math.sin(state.h) * state.v * dt; state.z += -Math.cos(state.h) * state.v * dt; }
   if (state.event === 'tip') { state.tip += (-state.tipDir * 1.32 - state.tip) * Math.min(1, dt * 6); state.v *= 0.9; state.x += -Math.sin(state.h) * state.v * dt; state.z += -Math.cos(state.h) * state.v * dt; }
   if (state.eventT > 2.0) {
@@ -3944,25 +4146,41 @@ function physicsRapier(dt, now = performance.now()) {
     if (state.auto) ({ gas, brake, steerIn } = autopilot());
   }
   // ondergrond: op zand en gras minder snel en minder grip
+  // elke wagen op zijn eigen manier (VEH.feel): de Kever komt het best door het zand, de Fiat graaft zich erin
   const road = state.testRoad !== undefined ? state.testRoad : roadAt(state.x, state.z, 0.3), turbo = keys.has('turbo') && !ev; // testRoad: voor tests
+  const F = VEH.feel;
   let vmax = (turbo ? VEH.vturbo : VEH.vmax) / 3.6, drag = 0.04, roll = 0.18, grip = 1;
-  if (!road) { vmax *= 0.68; drag = 0.12; roll = 0.3; grip = 0.72; }
-  else if (road.r.u) { vmax *= 0.88; drag = 0.06; roll = 0.22; grip = 0.82; }
+  if (!road) { vmax *= F.sand[0]; drag = 0.12; roll = 0.3; grip = F.sand[1]; }
+  else if (road.r.u) { vmax *= F.gravel[0]; drag = 0.06; roll = 0.22; grip = F.gravel[1]; }
   const heavy = state.mode === 'drive' && GAME.job?.item.zwaar; // melkbussen: minder snel op gang en wat lager in topsnelheid
   if (heavy) vmax *= 0.88;
   // motor: trekt minder naarmate je harder gaat; remmen, en blijf je erop staan dan achteruit
   const v = state.v, MAX_REV = VEH.rev / 3.6;
   let force = 0, brk = 0;
-  if (gas) { if (v < -0.3) brk = 6.5; else force = (turbo ? VEH.accT : VEH.acc) * (heavy ? 0.68 : 1) * Math.max(0, 1 - Math.pow(Math.max(0, v) / vmax, 2.2)); }
+  if (gas) { if (v < -0.3) brk = F.brake; else force = (turbo ? VEH.accT : VEH.acc) * (heavy ? 0.68 : 1) * Math.max(0, 1 - Math.pow(Math.max(0, v) / vmax, F.curve)); }
   if (!gas && v > vmax + 0.3) brk = 1.5; // motorrem na het loslaten van Shift
-  if (brake) { if (v > 0.3) brk = 6.5; else force = -3.6 * (1 - Math.pow(Math.max(0, -v) / MAX_REV, 1.6)); }
+  if (brake) { if (v > 0.3) brk = F.brake; else force = -3.6 * (1 - Math.pow(Math.max(0, -v) / MAX_REV, 1.6)); }
   if (!gas && !brake && Math.abs(v) < 0.4) brk = 4; // stilstaan blijft stilstaan
-  if (ev === 'busted') brk = 8;
+  if (ev === 'busted' || ev === 'cel') brk = 8;
   // sturen: op snelheid minder uitslag; Ape en busje kun je zo ver sturen dat ze omgaan
   const sp = Math.abs(v), T = VEH.tip, aLat = T ? T.a0 + T.a1 * sp : VEH.grip * 1.15;
-  const maxSteer = Math.min(0.6, Math.atan((VEH.wb * aLat) / Math.max(1, sp * sp)));
-  state.steer += (steerIn * maxSteer - state.steer) * Math.min(1, dt * (steerIn ? 5.5 : 7));
-  PHYS.drive(dt, { force, brake: brk, steer: state.steer, grip, drag, roll });
+  const maxSteer = Math.min(F.lock, Math.atan((VEH.wb * aLat) / Math.max(1, sp * sp)));
+  state.steer += (steerIn * maxSteer - state.steer) * Math.min(1, dt * (steerIn ? F.steer[0] : F.steer[1]));
+  // zijwind: buiten het dorp, waar geen huizen in de luwte staan, trekken vlagen een hoge wagen opzij en moet je tegensturen
+  let gust = 0;
+  if (F.gust && sp > 9 && !ev) {
+    if (now > (state.windT || 0)) { state.windT = now + 500; let n = 0; for (let gx = -1; gx <= 1; gx++) for (let gz = -1; gz <= 1; gz++) n += buildGrid.near(state.x + gx * 25, state.z + gz * 25).length; state.open = n < 2; }
+    if (state.open) gust = F.gust * Math.min(1, (sp - 9) / 14) * Math.sin(now / 2300) * Math.max(0, Math.sin(now / 870 + 1.3)) * 0.02;
+  }
+  PHYS.drive(dt, { force, brake: brk, steer: state.steer + gust, grip, drag, roll });
+  // kontje: bij de Kever (en een beetje bij de Fiat) zwaait de achterkant in een snelle bocht naar buiten, het meest
+  // als je het gas loslaat; de achterwielen houden genoeg grip om hem met tegensturen weer op te vangen
+  if (F.tail && sp > 8 && !ev && Math.abs(state.steer) > 0.02) {
+    const L = VEH.wb + VEH.front + VEH.rear, Iy = (VEH.phys.mass / 12) * (4 * VEH.half * VEH.half + L * L);
+    let slip = Math.atan2(-state.vx, -state.vz) - state.h; while (slip > Math.PI) slip -= Math.PI * 2; while (slip < -Math.PI) slip += Math.PI * 2;
+    const k = F.tail * (gas ? 0.55 : 1) * Math.min(1, (sp - 8) / 10) * Math.min(1, Math.abs(state.lat || 0) / 6) * Math.max(0, 1 - Math.abs(slip) / 0.16); // hooguit zo'n tien graden dwars
+    PHYS.body.applyTorqueImpulse({ x: 0, y: Math.sign(state.steer) * k * 1.6 * Iy * dt, z: 0 }, true);
+  }
   if (ev === 'splash') { const b = PHYS.body, lv = b.linvel(); b.setLinvel({ x: lv.x * 0.9, y: lv.y, z: lv.z * 0.9 }, true); }
   // omgaan: een duwtje om de lengteas maakt de val af (anders balanceert hij soms op twee wielen terug)
   if (ev === 'tip' && state.eventT < 1.2 && PHYS.up.y > 0.1) { const f = PHYS.fwd, k = -state.tipSide * VEH.phys.mass * 1.6 * dt; PHYS.body.applyTorqueImpulse({ x: f.x * k, y: f.y * k, z: f.z * k }, true); }
@@ -4002,7 +4220,8 @@ function physicsRapier(dt, now = performance.now()) {
 }
 function updateEventPhys(dt) {
   state.eventT += dt;
-  if (state.event === 'busted') { if (state.eventT > 3) { state.event = null; COPS.release(performance.now()); } return; }
+  if (state.event === 'busted') { if (state.eventT > 2.4) CEL.lock(); return; } // na de aanhouding mee naar de cel
+  if (state.event === 'cel') { CEL.update(); return; }
   if (state.event === 'splash') { state.sinkY = -Math.min(1.6, state.eventT * 1.5); $('tilt').hidden = true; }
   if (state.eventT > 2.2) {
     const s = state.lastSafe; if (s) { state.x = s.x; state.z = s.z; state.h = s.h; }
@@ -4047,7 +4266,7 @@ function updateNav(dt) {
   let hint = '';
   const ahead = roadAt(tx, tz, 1.0), next = ahead && ahead.r.d && ahead.r.name && ahead.r.name !== (road && road.r.name) ? ahead.r.name : '';
   const into = (n) => n + (/(straat|pad|hof|plein|veldje|aak)$/.test(n) ? ' in' : ' op');
-  if (direct < 40) hint = COPS.wanted ? 'Eerst de politie kwijt' : DEST.noun ? `Daar is ${DEST.noun}` : `Daar is nummer ${DEST.num}`;
+  if (direct < 40) hint = COPS.wanted && !DEST.bare ? 'Eerst de politie kwijt' : DEST.bare ? 'Daar is het bordje' : DEST.noun ? `Daar is ${DEST.noun}` : `Daar is nummer ${DEST.num}`;
   else if (state.event) hint = '';
   else if (Math.abs(rel) > 2.2) hint = 'Keer om';
   else if (!road) hint = 'Terug naar de weg';
@@ -4224,7 +4443,7 @@ const PHYS = (() => {
       if (w.front) car.setWheelSteering(i, c.steer);
       car.setWheelEngineForce(i, w.front ? 0 : (c.force * mass) / driven);
       car.setWheelBrake(i, (c.brake * mass * h) / W.length);
-      car.setWheelFrictionSlip(i, P.mu * c.grip);
+      car.setWheelFrictionSlip(i, P.mu * c.grip * (w.front ? VEH.feel.gripF : VEH.feel.gripR));
     });
     state.pvx = state.vx || 0; state.pvz = state.vz || 0;
     for (let k = 0; k < n; k++) {
@@ -4315,16 +4534,14 @@ function step(dt, now) {
   if (state.mode === 'drive' || state.mode === 'roam') {
     drivePhysics(dt, now);
     COPS.update(dt, now);
-    if (state.mode === 'drive') {
-      state.time += dt;
-      const j = GAME.job;
-      if (j && j.stage !== 'ophalen') j.t += dt; // de fooi loopt pas weg als de lading erin zit
-      if (j?.warm !== undefined && j.stage === 'bezorgen' && !j.cold && (j.warm -= dt) <= 0) { j.cold = true; j.dmg = Math.max(j.dmg, 0.6); showToast('De melk is afgekoeld', 'de kaasboerin betaalt minder', 2000); }
-    }
+    if (state.mode === 'drive') state.time += dt;
+    const j = GAME.job;
+    if (j && !j.seek && j.stage !== 'ophalen') j.t += dt; // de fooi loopt pas weg als de lading erin zit
+    if (j?.warm !== undefined && j.stage === 'bezorgen' && !j.cold && (j.warm -= dt) <= 0) { j.cold = true; j.dmg = Math.max(j.dmg, 0.6); showToast('De melk is afgekoeld', state.mode === 'drive' ? 'de kaasboerin betaalt minder' : 'de kaasboerin had hem warm willen hebben', 2000); }
     TOEN.update(dt, now);
     updateNav(dt);
-    // bij het adres stilgestaan? Met de politie achter je kun je niet bezorgen.
-    if (state.mode === 'drive' && GAME.job && !state.event && Math.hypot(DEST.gate[0] - state.x, DEST.gate[1] - state.z) < 6 && Math.abs(state.v) < 3.2) {
+    // bij het adres stilgestaan? Met de politie achter je kun je niet bezorgen. Een bordje van toen vind je door erlangs te rijden.
+    if (GAME.job && !GAME.job.seek && !state.event && Math.hypot(DEST.gate[0] - state.x, DEST.gate[1] - state.z) < 6 && Math.abs(state.v) < 3.2) {
       if (!COPS.wanted) arrive();
       else if (now > GAME.warnT) { GAME.warnT = now + 3000; showToast('Eerst de politie kwijt!', 'met zwaailicht achter je kun je niet bezorgen', 1800); }
     }
@@ -4347,7 +4564,7 @@ function frame(now) {
   const pivot = (state.tip < 0 ? 1 : -1) * (VEH.track / 2 + 0.07);
   tipper.rotation.z = state.tip; tipper.position.set(pivot * (1 - Math.cos(state.tip)), -pivot * Math.sin(state.tip), 0);
   const running = state.mode === 'drive' || state.mode === 'roam';
-  shell.rotation.z = state.roll; shell.position.y = Math.sin(now / 45) * 0.005 * (running ? 1 : 0.4);
+  shell.rotation.z = state.roll; shell.position.y = Math.sin(now / VEH.feel.shake[1]) * VEH.feel.shake[0] * (running ? 0.6 + Math.min(1, state.rpm) * 0.6 : 0.4); // de motor trilt, de tweetakt van de Ape het meest
   shell.rotation.x = running ? Math.max(-0.03, Math.min(0.03, -(keys.has('gas') ? 0.01 : 0) + (keys.has('brake') && state.v > 1 ? 0.02 : 0))) : 0;
   wheels.forEach((w) => { w.rotation.x = -state.wheelRot * 0.245 / w.userData.r; });
   steerParts.forEach((p) => { p.rotation.y = state.steer * p.userData.k; });
@@ -4378,15 +4595,17 @@ function frame(now) {
     if (state.mode === 'drive') {
       const left = Math.max(0, SHIFT - state.time);
       setText('timer', fmtClock(left)); setText('score', fmtPts(GAME.score));
-      if (GAME.job) {
-        const j = GAME.job, it = j.item; setText('navPay', '+' + reward(j));
-        const ophalen = j.stage === 'ophalen', tail = ophalen ? '' : it.au ? ` · ${Math.round((1 - j.dmg) * 100)}% ${it.heel}` : '';
-        const head = ophalen ? `Ophalen · ${j.story.jaar.replace('rond ', '±')}` : it.kort, line = head + tail;
-        if (shown.get('navItem') !== line) { shown.set('navItem', line); const b = $('navItem'); b.textContent = head; if (tail) { const i = document.createElement('i'); i.textContent = tail; b.append(i); } }
-        if (j.warm !== undefined && j.stage === 'bezorgen') setText('navRule', j.cold ? 'de melk is afgekoeld' : `nog ${fmtClock(Math.max(0, j.warm))} warm`);
-      }
+      if (GAME.job) setText('navPay', '+' + reward(GAME.job));
       $('shiftBox').classList.toggle('low', left < 15);
       if (left < 10 && Math.ceil(left) !== GAME.tick) { GAME.tick = Math.ceil(left); beep([880], 0.07, 'square', 0.1); } // laatste tien tellen
+    } else setText('score', `${DOELEN.count}/${DOELEN.total}`);
+    $('hud').classList.toggle('free', !GAME.job);
+    if (GAME.job) { // wat je bij je hebt, of het bordje waar je heen rijdt
+      const j = GAME.job, it = j.item, ophalen = j.stage === 'ophalen';
+      const tail = j.seek || ophalen ? '' : it.au ? ` · ${Math.round((1 - j.dmg) * 100)}% ${it.heel}` : '';
+      const head = j.seek ? `Weetje van toen${j.seek.w.jaar && j.seek.w.jaar !== 'sage' ? ` · ${j.seek.w.jaar.replace('rond ', '±')}` : ''}` : ophalen ? `Ophalen · ${j.story.jaar.replace('rond ', '±')}` : it.kort, line = head + tail;
+      if (shown.get('navItem') !== line) { shown.set('navItem', line); const b = $('navItem'); b.textContent = head; if (tail) { const i = document.createElement('i'); i.textContent = tail; b.append(i); } }
+      if (j.warm !== undefined && j.stage === 'bezorgen') setText('navRule', j.cold ? 'de melk is afgekoeld' : `nog ${fmtClock(Math.max(0, j.warm))} warm`);
     }
     if (!$('story').hidden && (++layoutTick & 7) === 0) layoutOverlays(); // het navigatievak kan groeien terwijl het verhaalbord er staat
     setText('limitNum', String(state.limit)); $('limit').classList.toggle('over', Math.abs(state.v) * 3.6 > state.limit + 5);
@@ -4407,11 +4626,12 @@ function showStartCard() {
   $('routeKm').textContent = n ? fmtKm(n.m) : '';
   $('bestLine').textContent = GAME.best ? `Beste dienst met ${VEH.it}` : `Nog geen dienst gereden met ${VEH.it}`;
   $('bestPts').textContent = GAME.best ? fmtPts(GAME.best) : '';
-  $('weetjesN').textContent = `${TOEN.found}/${TOEN.total}`;
+  $('weetjesN').textContent = `${DOELEN.count}/${DOELEN.total}`;
 }
 function chooseVehicle(id) {
   setVehicle(id); if (PHYS.ok) PHYS.setVehicle();
-  $('introText').textContent = `Je ${VEH.desc} staat voor Soemeersingel 25. Bezorg in vijf minuten zoveel mogelijk adressen in Helenaveen: elk adres levert punten op, en hoe sneller je er bent, hoe meer fooi. Om de paar adressen wacht een verhaal uit het Helenaveen van toen, en langs de weg staan bordjes met weetjes.`;
+  $('introText').textContent = `Je ${VEH.desc} staat voor Soemeersingel 25. Bezorg in vijf minuten zoveel mogelijk adressen in Helenaveen: elk adres levert punten op, en hoe sneller je er bent, hoe meer fooi. Om de paar adressen wacht een verhaal uit het Helenaveen van toen, en langs de weg staan bordjes met weetjes. Liever rustig rondrijden? Ga dan op ontdekking: zonder klok, en met alle verhalen en weetjes als doelen.`;
+  $('feelText').textContent = VEH.feelText;
   $('kGas').textContent = VEH.gasText; $('kTurbo').textContent = VEH.turboText; $('kSteer').textContent = VEH.steerText;
   document.querySelectorAll('#pick button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.v === VEH.id)));
   try { localStorage.setItem('ape-koolweg-wagen', VEH.id); } catch (e) { /* geen opslag */ }
@@ -4427,9 +4647,68 @@ function startShift(atStart) {
   const n = GAME.next || { ...pickJob(state.x, state.z, true), item: pickItem() }; GAME.next = null;
   startJob(n.a, n.item);
   state.time = 0; state.mode = 'drive'; camInit = false; last = performance.now(); navTimer = 0;
-  $('hud').hidden = false; $('hud').classList.remove('roam');
+  $('hud').hidden = false; $('hud').classList.remove('roam'); setText('scoreLbl', 'Punten');
   COPS.reset(); TRAFFIC.reset();
 }
+// op ontdekking: zonder klok rondrijden en de verhalen en weetjes van toen verzamelen
+function startRoam(atStart, seek = true) {
+  if (atStart) Object.assign(state, { x: W.start.x, z: W.start.z, h: W.start.h, v: 0, steer: 0, roll: 0, tip: 0, tiltTime: 0, event: null, sinkY: 0, y: 0, lastSafe: null, susY: 0, susV: 0, pitch: 0, pitchV: 0 });
+  if (PHYS.ok) PHYS.teleport(state.x, state.z, state.h);
+  Object.assign(GAME, { score: 0, delivered: 0, fines: 0, tick: -1, job: null, next: null, stories: [], storyDone: 0 });
+  state.mode = 'roam'; state.time = 0; camInit = false; last = performance.now(); navTimer = 0;
+  $('hud').hidden = false; $('hud').classList.add('roam'); setText('scoreLbl', 'Doelen');
+  COPS.reset(); TRAFFIC.reset();
+  if (seek) seekNext(); else { destGroup.visible = false; currentRoute = null; CARGO.refresh(); }
+}
+function roamIntro() {
+  showStory('Helenaveen van toen', 'Op ontdekking', `Geen klok en geen punten: rij langs de ${TOEN.total} bruine bordjes en doe de ${VERHALEN.length} verhalen van toen. Het navigatievak wijst je naar het dichtstbijzijnde bordje. ${MOBILE ? 'Tik op Doelen' : 'Druk op T of klik op Doelen'} om zelf een verhaal te kiezen.`, 12000);
+}
+
+// ---- de doelenlijst: alle verhalen en weetjes, wat je al hebt (om na te lezen) en wat nog open staat
+let logFrom = null;
+function renderLog() {
+  const n = DOELEN.count, t = DOELEN.total;
+  $('logCount').textContent = `${n} van ${t}`; $('logBar').style.width = `${(n / t) * 100}%`;
+  $('logIntro').textContent = n === t ? 'Alles gevonden. Hier kun je alles nog eens nalezen.' : 'Doe de verhalen en rij langs de bruine bordjes met een gouden munt. Wat je hebt gevonden, kun je hier nalezen.';
+  const row = (done, title, jaar, text, btn, onClick) => {
+    const li = document.createElement('li'); li.className = done ? 'done' : 'open';
+    const m = document.createElement('span'); m.className = 'mark'; m.textContent = done ? '✓' : ''; m.setAttribute('aria-label', done ? 'behaald' : 'nog open');
+    const d = document.createElement('div'), b = document.createElement('b'), p = document.createElement('p');
+    b.textContent = title; if (jaar) { const sm = document.createElement('small'); sm.textContent = jaar; b.append(sm); }
+    p.textContent = text; d.append(b, p); li.append(m, d);
+    if (btn) { const k = document.createElement('button'); k.type = 'button'; k.className = 'mini'; k.textContent = btn; k.addEventListener('click', onClick); li.append(k); }
+    return li;
+  };
+  const busy = GAME.job?.story?.id;
+  $('logStories').replaceChildren(...VERHALEN.map((v) => {
+    const done = DOELEN.has(v.id), now = busy === v.id;
+    return row(done, v.titel, v.jaar, now ? `${v.doel} Hier ben je nu mee bezig.` : done ? v.klaar : v.doel, now ? null : done ? 'Nog een keer' : 'Doe dit verhaal', () => chooseGoal(() => startChosenStory(v)));
+  }));
+  $('logWeetjes').replaceChildren(...TOEN.signs.map((s) => {
+    const done = TOEN.has(s.w.id);
+    return row(done, s.w.titel, s.w.jaar, done ? s.w.tekst : `Rij langs het bordje${s.place.street ? ` (${s.place.street})` : ''}.`, done ? null : 'Wijs de weg', () => chooseGoal(() => seekSign(s)));
+  }));
+}
+// een doel gekozen: vanaf de startkaart meteen op ontdekking, anders gewoon verder met het nieuwe doel
+function chooseGoal(fn) {
+  const from = logFrom; closeLog();
+  if (from === 'intro') { $('startScreen').hidden = true; initAudio(); startRoam(true, false); }
+  fn();
+}
+function openLog() {
+  logFrom = state.mode; renderLog(); $('logScreen').hidden = false; $('logScreen').scrollTop = 0;
+  if (state.mode === 'roam') { state.mode = 'log'; keys.clear(); updateAudio(0.15, 0, true); }
+  $('logClose').textContent = logFrom === 'roam' ? 'Verder rijden' : 'Terug';
+  $('logClose').focus();
+}
+function closeLog() {
+  $('logScreen').hidden = true;
+  if (state.mode === 'log') { state.mode = 'roam'; last = performance.now(); canvas.focus?.(); }
+  if (logFrom === 'intro') showStartCard();
+}
+$('logClose').addEventListener('click', closeLog);
+$('logBtn').addEventListener('click', () => openLog());
+$('scoreBox').addEventListener('click', () => { if (state.mode === 'roam') openLog(); });
 function endShift() {
   state.mode = 'done'; keys.clear(); updateAudio(0.15, 0, true); COPS.stop(); $('tilt').hidden = true;
   beep([523, 659, 784], 0.25, 'triangle', 0.25); setTimeout(() => beep([1046], 0.4, 'triangle', 0.22), 260);
@@ -4460,11 +4739,14 @@ $('againBtn').addEventListener('click', () => {
   $('endScreen').hidden = true; prepareNext(); startShift(true);
   showToast('Nieuwe dienst', `eerst ${GAME.job.item.naam} naar ${DEST.label}`, 2400);
 });
-// na de dienst vrij rondrijden: geen adressen meer, de politie rijdt nog wel rond
-$('roamBtn').addEventListener('click', () => {
-  $('endScreen').hidden = true; state.mode = 'roam'; last = performance.now();
-  GAME.job = null; currentRoute = null; destGroup.visible = false; $('hud').classList.add('roam'); COPS.reset(); CARGO.refresh();
+// op ontdekking, vanaf de startkaart of na de dienst: geen adressen en geen klok, wel de doelen van toen
+$('exploreBtn').addEventListener('click', () => {
+  initAudio(); if (audio && audio.ctx.state === 'suspended') audio.ctx.resume();
+  if (MOBILE) { try { document.documentElement.requestFullscreen?.().catch(() => {}); } catch (e) { /* niet beschikbaar */ } }
+  $('startScreen').hidden = true; startRoam(true); roamIntro();
+  canvas.focus?.();
 });
+$('roamBtn').addEventListener('click', () => { $('endScreen').hidden = true; startRoam(false); roamIntro(); });
 
 // bij een nieuwe versie van de pagina meteen verder rijden waar je was
 window.claude?.hot?.snapshot?.(() => ({ x: state.x, z: state.z, h: state.h, time: state.time, mode: state.mode, wagen: VEH.id }));
@@ -4476,14 +4758,14 @@ const boot = (data) => {
   drawSpeedo(0, 1, 0);
   TRAFFIC.reset();
   if (data && typeof data.x === 'number' && (data.mode === 'drive' || data.mode === 'roam')) {
-    Object.assign(state, { x: data.x, z: data.z, h: data.h }); startShift(false);
+    Object.assign(state, { x: data.x, z: data.z, h: data.h }); if (data.mode === 'roam') startRoam(false); else startShift(false);
   } else if (location.hash === '#demo') {
     startShift(true); state.auto = true;
   } else $('startScreen').hidden = false;
   requestAnimationFrame(frame);
 };
 window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
-window.__ape = { state, keys, routeFrom, DEST, camera, THREE, scene, renderer, resize, sun, CARGO, LADING, cargoShock, reward, TOEN, VERHALEN, pickStory, startStoryJob, arrive, bumpHeight, BUMPS, BUILD_SHAPES, TREES, pip, inWater, LIFE, COPS, TRAFFIC, PHYS, GAME, ADDRS, NODES, startShift, endShift, deliver, pickJob, startJob, get aerialLoaded() { return aerialLoaded; }, get post() { return post; }, get VEH() { return VEH; }, get frames() { return renderer.info.render.frame; },
+window.__ape = { DOELEN, CEL, NAMEN, POIS, streetPoint, makePlace, roadAt, startRoam, openLog, closeLog, seekNext, seekSign, startChosenStory, state, keys, routeFrom, DEST, camera, THREE, scene, renderer, resize, sun, CARGO, LADING, cargoShock, reward, TOEN, VERHALEN, pickStory, startStoryJob, arrive, bumpHeight, BUMPS, BUILD_SHAPES, TREES, pip, inWater, LIFE, COPS, TRAFFIC, PHYS, GAME, ADDRS, NODES, startShift, endShift, deliver, pickJob, startJob, get aerialLoaded() { return aerialLoaded; }, get post() { return post; }, get VEH() { return VEH; }, get frames() { return renderer.info.render.frame; },
   sim(seconds, dt = 1 / 60) { let maxSus = 0, thumps = 0, events = []; const t0 = state.lastThump;
     for (let t = 0; t < seconds; t += dt) { drivePhysics(dt); if (state.event && !events.includes(state.event)) events.push(state.event); updateNav(dt); maxSus = Math.max(maxSus, Math.abs(state.susY)); if (state.lastThump !== t0) thumps++; }
     return { x: +state.x.toFixed(1), z: +state.z.toFixed(1), v: +(state.v * 3.6).toFixed(1), maxSus: +maxSus.toFixed(3), events, street: streetShown }; },

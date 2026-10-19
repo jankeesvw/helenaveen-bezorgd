@@ -8,10 +8,12 @@ Spelen: https://jankeesvw.github.io/helenaveen-bezorgd/
 
 Op de startkaart kies je je wagen; de beste dienst wordt per wagen bijgehouden.
 
-- **Piaggio Ape**, groen, met een laadbak vol kool. Haalt 45 km/u, opgevoerd 70, en kantelt als je hem op snelheid op vol stuur neemt.
-- **Fiat 500** (de oude), rood, met het linnen schuifdak. 85 km/u, plankgas 95.
-- **Volkswagen Kever** (de oude), rood, met losse spatborden en treeplanken. 100 km/u, plankgas 120.
-- **Volkswagen T2-busje**, Samtgrün met een wit dak. 95 km/u, plankgas 110, en helt flink over in de bocht.
+Elke wagen rijdt anders: hoe snel het stuur reageert, hoe ver je kunt insturen, hoe hard hij remt, hoe hij optrekt, hoe stug de vering is en hoe hij zich houdt op zand en grind.
+
+- **Piaggio Ape**, groen, met een laadbak vol kool. Haalt 45 km/u, opgevoerd 70. Licht en wendbaar, met een stuur als van een scooter en een tweetakt die het meest trilt. De trommelremmen hebben wat meer weg nodig, en neem je hem op snelheid op vol stuur, dan gaat hij op twee wielen en daarna om.
+- **Fiat 500** (de oude), rood, met het linnen schuifdak. 85 km/u, plankgas 95. Klein en vinnig: hij stuurt direct, huppelt over de wortelbulten op zijn stugge vering en staat snel stil, maar op zand en gras graven zijn kleine wieltjes zich in.
+- **Volkswagen Kever** (de oude), rood, met losse spatborden en treeplanken. 100 km/u, plankgas 120. De motor ligt achterin, boven de aandrijfwielen: hij trekt flink op en komt van alle wagens het best door het zand. In een snelle bocht breekt de achterkant uit, vooral als je het gas loslaat; met tegensturen vang je hem weer op.
+- **Volkswagen T2-busje**, Samtgrün met een wit dak. 95 km/u, plankgas 110. Zwaar en hoog: het grote stuur draait traag, hij helt flink over in de bocht en heeft de langste remweg. Buiten het dorp, waar geen huizen in de luwte staan, trekken windvlagen hem opzij en moet je tegensturen.
 
 ## Bezorgen
 
@@ -23,13 +25,17 @@ Elk adres krijgt een eigen lading, die in de laadbak van de Ape staat of op een 
 
 Na elke twee gewone adressen wacht een verhaal uit de geschiedenis van het dorp: eerst iets ophalen, dan wegbrengen. Eierkisten van een kippenhouder aan de Koolweg naar de eierwagen op de Sevenumseweg; warme melk voor de kaasboerin op een Koningshoeve, voordat hij afkoelt; de Gouden Helm die turfsteker Gebbel Smolenaars in 1910 vond; twee botanici die in 1895 door de kermis geen bed hadden en naar Meijel moesten; bijenkasten voor meester Theelen, waar bij een klap de bijen uit ontsnappen; en balen turfstrooisel van de eerste turfstrooiselfabriek van Nederland.
 
-Langs de weg staan bruine bordjes met een gouden munt erboven. Rijd je erlangs, dan krijg je een weetje over het oude Helenaveen (de kazemat bij Soemeersingel 25, de kool onder glas aan de Koolweg, de scheepswerf, de sage van het Soemeer en meer) en tijdens een dienst 25 punten. Welke je al hebt gevonden, onthoudt je browser.
+Langs de weg staan 23 bruine bordjes met een gouden munt erboven. Rijd je erlangs, dan krijg je een weetje over het oude Helenaveen (de kazemat bij Soemeersingel 25, de kool onder glas aan de Koolweg, de vindplaats van de Gouden Helm, de Koningshoeven, het oude kerkhof onder het Hannes Joostenplein, de sage van het Soemeer en meer) en tijdens een dienst 25 punten.
 
-De verhalen en weetjes komen van [Helenaveen van toen](https://www.helenaveenvantoen.nl), [DeurneWiki](https://www.deurnewiki.nl) en de [straatnaamverklaring van André Vervuurt](https://www.andre-vervuurt.nl/09_Straatnaamverklaring_AV.pdf).
+Elk verhaal en elk weetje is een doel, 29 in totaal. Een verhaal telt als je het netjes aflevert: minstens de helft van de eieren heel, de melk nog warm, de helm zonder grote deuken, de botanici zonder dat ze boos uitstappen en de meeste bijen nog in de kast. Wat je al hebt gehaald, onthoudt je browser, en in de doelenlijst kun je alles nog eens nalezen.
+
+Kies je op de startkaart **Ontdek Helenaveen**, dan rijd je zonder klok en zonder punten rond. Het navigatievak wijst je steeds naar het dichtstbijzijnde bordje dat je nog niet hebt gevonden. Met T (of door op het vak Doelen te tikken) open je de doelenlijst, waar je zelf een verhaal kiest of de weg laat wijzen naar een bepaald bordje. Na een dienst kun je ook verder op ontdekking.
+
+De verhalen en weetjes komen van [Helenaveen van toen](https://www.helenaveenvantoen.nl), [DeurneWiki](https://www.deurnewiki.nl), de [straatnaamverklaring van André Vervuurt](https://www.andre-vervuurt.nl/09_Straatnaamverklaring_AV.pdf) en oude kranten in [Delpher](https://www.delpher.nl), zoals de Zuid-Willemsvaart van 9 december 1899 over de nieuwe veldwachterswoning.
 
 ## Politie
 
-Er rijden steeds twee witte politiewagens rond. Overal geldt de echte maximumsnelheid uit OpenStreetMap (veel 30 in het dorp, 60 erbuiten), die zie je naast je teller. Rij je meer dan 5 km/u te hard en ziet een politiewagen het, dan gaan zwaailicht en sirene aan en komen ze achter je aan, zoals in GTA. Hoe langer de achtervolging duurt, hoe meer sterren en hoe meer wagens; een politiewagen rammen helpt ook niet. Zolang ze achter je aan zitten kun je niet bezorgen. Blijf lang genoeg uit hun zicht (achter de huizen, of gewoon verder weg) en ze geven het op, wat je wat punten oplevert. Val je stil met een politiewagen tegen je aan, dan ben je aangehouden en kost de bekeuring 100 punten per ster.
+Er rijden steeds twee witte politiewagens rond. Overal geldt de echte maximumsnelheid uit OpenStreetMap (veel 30 in het dorp, 60 erbuiten), die zie je naast je teller. Rij je meer dan 5 km/u te hard en ziet een politiewagen het, dan gaan zwaailicht en sirene aan en komen ze achter je aan, zoals in GTA. Hoe langer de achtervolging duurt, hoe meer sterren en hoe meer wagens; een politiewagen rammen helpt ook niet. Zolang ze achter je aan zitten kun je niet bezorgen. Blijf lang genoeg uit hun zicht (achter de huizen, of gewoon verder weg) en ze geven het op, wat je wat punten oplevert. Val je stil met een politiewagen tegen je aan, dan ben je aangehouden: dat kost tijdens een dienst 100 punten per ster, en je gaat mee naar de cel. Die zit in de oude veldwachterswoning aan de Soemeersingel, die in 1899 "een paar hokken die voor gevangenis moeten dienen" kreeg. Daar zit je je tijd uit (tijdens een dienst gaat die van je klok af), en je hoort onderwijl het verhaal van de veldwachters van Helenaveen.
 
 ## Rijden
 
@@ -39,19 +45,23 @@ De wagens rijden met echte physics (Rapier): elk heeft zijn eigen massa, zwaarte
 
 Om je heen rijdt verkeer: auto's, bestelbussen, trekkers (soms met een aanhanger vol kratten kool of aarde) en fietsers, en een flink deel komt je over je route tegemoet. Ze houden rechts, remmen voor wat er voor ze rijdt, wijken op smalle weggetjes uit naar de berm, halen een fietser of trekker in als de weg vrij is en gaan opzij voor een politiewagen met zwaailicht. Sta je stil in de weg, dan toeteren ze of bellen ze. Rijd je iemand aan terwijl de politie het ziet, dan komen ze achter je aan.
 
+## Naambordjes
+
+Bedrijven en boerderijen die in OpenStreetMap een naam hebben, krijgen een bordje langs de weg: Hotel Eetcafé In d'Ouwe Peel, cafetaria Van Veen, gemeenschapshuis De Gouden Helm, basisschool De Peelparel, de Sint-Willibrorduskerk, pension Oranjehoeve, Landgoed Julianahoeve en camperplaats De Oude Hoeven op witte bordjes, en de Koningshoeven Willem de Zwijger, Wilhelmina en Juliana op groene. Het melkverhaal brengt je naar de kaasboerin op een van die Koningshoeven.
+
 ## Onderweg
 
 Af en toe staat er een bewoner in de voortuin die je nazwaait, of loopt er iemand langs de weg. Bij de voordeuren zitten katten; die rennen weg als je te dichtbij komt, en soms schiet er een vlak voor je de weg over. Op het kanaal zwemmen zwanen, sommige met grijze jongen erachteraan. Toeter je, dan zwaaien de mensen terug, schieten de katten weg en sissen de zwanen.
 
 ## Besturing
 
-Pijltjes of WASD om te rijden, Shift voor opgevoerd (tot 70 km/u), spatie om te remmen (blijf je erop staan, dan rij je achteruit), H om te toeteren, C voor een andere camera en R om terug op de weg te komen. Op een telefoon stuur je met je duim over het stuurvlak links en zitten gas en rem rechts.
+Pijltjes of WASD om te rijden, Shift voor opgevoerd (tot 70 km/u), spatie om te remmen (blijf je erop staan, dan rij je achteruit), H om te toeteren, C voor een andere camera, R om terug op de weg te komen en T voor de doelenlijst als je op ontdekking bent. Op een telefoon stuur je met je duim over het stuurvlak links en zitten gas en rem rechts.
 
 ## Hoe het gemaakt is
 
 Alles staat in één HTML-bestand met [three.js](https://threejs.org), [Rapier](https://rapier.rs) voor de physics en [N8AO](https://github.com/N8python/n8ao) voor de ambient occlusion (alleen op de computer, samen met een lichte bloom en SMAA). Met `#simpel` achter de URL rijd je met de oude eenvoudige besturing, met `#plat` zonder nabewerking. De wereld komt uit open data:
 
-- wegen, water en landgebruik: © [OpenStreetMap-bijdragers](https://www.openstreetmap.org/copyright) (ODbL)
+- wegen, water, landgebruik en de namen van bedrijven, boerderijen en monumenten: © [OpenStreetMap-bijdragers](https://www.openstreetmap.org/copyright) (ODbL)
 - bomen: het [AHN](https://www.ahn.nl) via PDOK. Langs de wegen zijn het eiken, in het bos dennen, berken en eiken. Het verschil tussen oppervlakte- en maaiveldmodel geeft de hoogte van alles boven de grond; zonder de gebouwen blijven de boomkruinen over, en elke kruintop wordt een boom met zijn echte hoogte en kruinstraal. De wortelbulten op de Soemeersingel en de Koolweg liggen bij die echte laanbomen.
 - gebouwen met echte dakvormen en hoogtes: [3DBAG](https://3dbag.nl) van de TU Delft (CC BY 4.0)
 - adressen, bouwjaar en gebruiksdoel: BAG via [PDOK](https://www.pdok.nl)

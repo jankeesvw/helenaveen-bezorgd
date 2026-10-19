@@ -50,6 +50,23 @@ LAND_KIND = {'forest': 0, 'wood': 0, 'grass': 1, 'meadow': 1, 'farmland': 2, 'or
 random.seed(42)
 
 
+# soort en omschrijving van een benoemde plek uit OSM
+POI_SUB = {('tourism', 'hotel'): 'hotel', ('amenity', 'restaurant'): 'eetcafé', ('amenity', 'fast_food'): 'cafetaria',
+           ('tourism', 'guest_house'): 'pension', ('tourism', 'camp_site'): 'camping', ('tourism', 'caravan_site'): 'camperplaats',
+           ('amenity', 'community_centre'): 'gemeenschapshuis', ('amenity', 'school'): 'basisschool', ('amenity', 'place_of_worship'): 'kerk'}
+
+
+def poi_kind(t):
+    subs = [v for (k, w), v in POI_SUB.items() if t.get(k) == w]
+    if subs:
+        return 'bedrijf', ' en '.join(subs)
+    if t.get('name', '').lower().endswith('hoeve'):
+        return 'hoeve', 'boerderij'
+    if t.get('historic') in ('memorial', 'boundary_stone') or t.get('tourism') == 'artwork':
+        return 'monument', {'boundary_stone': 'grenspaal'}.get(t.get('historic'), 'kunstwerk' if t.get('tourism') == 'artwork' else 'monument')
+    return None, None
+
+
 def proj(lat, lon):
     return ((lon - LON0) * KX, (LAT0 - lat) * KZ)
 
@@ -586,6 +603,28 @@ def main():
             seen.add(label)
             addrs.append([label, dm(ax), dm(az), dm(px), dm(pz), node, dm(cx), dm(cz)])
 
+    # benoemde plekken uit OSM (data/poi.json): bedrijven en boerderijen krijgen een naambordje, monumenten
+    # kunnen een weetje dragen. Soort, omschrijving, plek en het adres als OSM het kent.
+    pois = []
+    poi_file = ROOT / 'data' / 'poi.json'
+    for e in (json.loads(poi_file.read_text())['elements'] if poi_file.exists() else []):
+        t = e['tags']; c = e.get('center') or e
+        x, z = proj(c['lat'], c['lon'])
+        if not inside_map(x, z, EDGE + 5):
+            continue
+        kind, sub = poi_kind(t)
+        if not kind:
+            continue
+        label = f"{t['addr:street']} {t['addr:housenumber']}" if 'addr:street' in t and 'addr:housenumber' in t else ''
+        # hetzelfde bedrijf als knoop en als gebouw (Oranjehoeve en Oranje Hoeve): één bordje, dat van het bedrijf
+        twin = next((q for q in pois if math.hypot(q[3] - dm(x), q[4] - dm(z)) < 400 and q[0].replace(' ', '').lower()[:6] == t['name'].replace(' ', '').lower()[:6]), None)
+        if twin:
+            if twin[1] == 'hoeve' and kind == 'bedrijf':
+                pois.remove(twin)
+            else:
+                continue
+        pois.append([t['name'], kind, sub, dm(x), dm(z), label])
+
     world = {
         'bounds': [dm(v) for v in BOUNDS],
         'nodes': flat(nodes),
@@ -601,6 +640,7 @@ def main():
         'dest': {'addr': [dm(dest[0]), dm(dest[1])], 'gate': [dm(gx), dm(gz)], 'post': [dm(post[0]), dm(post[1])],
                  'node': gate_node, 'building': dest_building},
         'addrs': addrs,
+        'pois': pois,
     }
     world['aerial'] = aerial_tiles(proj)
     js = json.dumps(world, separators=(',', ':'))
